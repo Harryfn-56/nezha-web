@@ -1,0 +1,24 @@
+{
+  "name": "nezha-chinese-game",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Website game ôn tập tiếng Trung cho học sinh - NeZha Chinese Center",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "node scripts/dev-server.js",
+    "build": "node scripts/build.js",
+    "preview": "node scripts/dev-server.js dist 4173",
+    "start": "node scripts/dev-server.js"
+  },
+  "keywords": [
+    "chinese",
+    "learning",
+    "game",
+    "kahoot",
+    "education"
+  ],
+  "license": "UNLICENSED"
+}

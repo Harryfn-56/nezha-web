@@ -1,0 +1,14 @@
+{
+  "name": "NeZha Chinese Center — Game ôn tập",
+  "short_name": "NeZha Game",
+  "description": "Trò chơi ôn tập tiếng Trung cho học sinh NeZha Chinese Center",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFF8EE",
+  "theme_color": "#A81F16",
+  "lang": "vi",
+  "icons": [
+    { "src": "/assets/icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/assets/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

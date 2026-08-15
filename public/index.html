@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>NeZha Chinese Center — Game ôn tập tiếng Trung</title>
+  <meta name="description" content="Website trò chơi ôn tập tiếng Trung dành cho học sinh NeZha Chinese Center: flashcard, trắc nghiệm, ghép cặp, gõ pinyin, nghe hiểu và thi đấu Kahoot đầu giờ." />
+  <meta name="theme-color" content="#A81F16" />
+
+  <link rel="icon" href="/assets/favicon.png" />
+  <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+
+  <meta property="og:title" content="NeZha Chinese Center — Game ôn tập tiếng Trung" />
+  <meta property="og:description" content="Chơi mà nhớ — ôn tập từ vựng tiếng Trung sau mỗi buổi học." />
+  <meta property="og:image" content="/assets/logo.png" />
+  <meta property="og:type" content="website" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Be+Vietnam+Pro:ital,wght@0,400;0,600;0,700;1,600&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- Màn hình chờ trong lúc tải mã nguồn -->
+  <div id="boot" style="position:fixed;inset:0;display:grid;place-items:center;background:#FFF8EE;z-index:999">
+    <div style="text-align:center">
+      <img src="/assets/logo.png" alt="NeZha" width="120" height="120"
+           style="margin:0 auto 14px;animation:bootPulse 1.4s ease-in-out infinite" />
+      <div style="font-family:'Baloo 2',sans-serif;font-weight:800;color:#A81F16;font-size:1.15rem">
+        NeZha Chinese Center
+      </div>
+      <div style="color:#8B6D64;font-size:.86rem;margin-top:2px">Đang tải trò chơi…</div>
+    </div>
+  </div>
+  <style>
+    @keyframes bootPulse { 0%,100% { transform:scale(1) } 50% { transform:scale(1.07) } }
+  </style>
+
+  <noscript>
+    <div style="padding:40px;text-align:center;font-family:sans-serif">
+      <h1>Cần bật JavaScript</h1>
+      <p>Website trò chơi này cần JavaScript để hoạt động. Em hãy bật JavaScript trong trình duyệt nhé.</p>
+    </div>
+  </noscript>
+
+  <script type="module" src="/js/main.js"></script>
+  <!-- phiên bản build: <!--BUILD_VERSION--> -->
+</body>
+</html>
