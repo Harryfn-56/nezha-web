@@ -1,0 +1,16 @@
+{
+  // Cấu hình deploy lên Cloudflare (Workers Static Assets)
+  // Website là trang tĩnh SPA: mọi đường dẫn không phải file thật
+  // đều trả về index.html — khai báo bằng "not_found_handling" bên dưới,
+  // KHÔNG dùng file _redirects (Cloudflare báo lỗi vòng lặp vô hạn).
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nezha-web",
+  "compatibility_date": "2026-08-15",
+  "assets": {
+    "directory": "dist",
+    "not_found_handling": "single-page-application"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

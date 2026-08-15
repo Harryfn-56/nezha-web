@@ -320,6 +320,12 @@ Lý do hợp với trung tâm dạy học:
 Xong. Website chạy tại `https://nezha-web.pages.dev`. Từ giờ mỗi lần `git push`
 là Cloudflare tự build lại và cập nhật.
 
+> **Nếu Cloudflare dùng lệnh deploy `npx wrangler deploy`** (bản Workers mới):
+> dự án đã có sẵn file `wrangler.jsonc` ở thư mục gốc để khai báo điều hướng SPA.
+> Không được thêm file `_redirects` với luật `/* /index.html 200` — Cloudflare sẽ
+> báo lỗi *"Infinite loop detected"* và deploy thất bại. File `_redirects` chỉ
+> dành cho Netlify và chỉ được tạo khi build trên Netlify.
+
 **Gắn tên miền riêng:** vào project vừa tạo → **Custom domains** → **Set up a
 domain** → nhập tên miền → làm theo hướng dẫn đổi DNS.
 

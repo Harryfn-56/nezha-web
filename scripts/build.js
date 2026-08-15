@@ -201,12 +201,22 @@ fs.writeFileSync(path.join(OUT, '.htaccess'), htaccess);
 
 /* ------------------------------------ cấu hình cho các host miễn phí */
 
-// Cloudflare Pages & Netlify: mọi đường dẫn không phải file thật -> index.html
-fs.writeFileSync(path.join(OUT, '_redirects'), '/*    /index.html   200\n');
-
-// Netlify: thêm kiểu MIME đúng cho ES Module
-fs.writeFileSync(path.join(OUT, '_headers'),
-  '/js/*\n  Content-Type: text/javascript; charset=utf-8\n');
+/*
+ * LƯU Ý QUAN TRỌNG VỀ CLOUDFLARE
+ * Cloudflare (Workers Static Assets) KHÔNG chấp nhận luật "/* -> /index.html 200"
+ * trong file _redirects — nó báo lỗi "Infinite loop detected".
+ * Với Cloudflare, việc điều hướng SPA được khai báo trong wrangler.jsonc:
+ *     "assets": { "not_found_handling": "single-page-application" }
+ * Vì vậy chỉ tạo _redirects / _headers khi build trên Netlify.
+ */
+const isNetlify = !!(process.env.NETLIFY || process.env.NETLIFY_BUILD_BASE);
+if (isNetlify) {
+  // Netlify: mọi đường dẫn không phải file thật -> index.html
+  fs.writeFileSync(path.join(OUT, '_redirects'), '/*    /index.html   200\n');
+  // Netlify: thêm kiểu MIME đúng cho ES Module
+  fs.writeFileSync(path.join(OUT, '_headers'),
+    '/js/*\n  Content-Type: text/javascript; charset=utf-8\n');
+}
 
 // Vercel
 fs.writeFileSync(path.join(OUT, 'vercel.json'), JSON.stringify({
