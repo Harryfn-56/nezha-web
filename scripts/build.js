@@ -199,6 +199,26 @@ AddType application/manifest+json .webmanifest
 `;
 fs.writeFileSync(path.join(OUT, '.htaccess'), htaccess);
 
+/* ------------------------------------ cấu hình cho các host miễn phí */
+
+// Cloudflare Pages & Netlify: mọi đường dẫn không phải file thật -> index.html
+fs.writeFileSync(path.join(OUT, '_redirects'), '/*    /index.html   200\n');
+
+// Netlify: thêm kiểu MIME đúng cho ES Module
+fs.writeFileSync(path.join(OUT, '_headers'),
+  '/js/*\n  Content-Type: text/javascript; charset=utf-8\n');
+
+// Vercel
+fs.writeFileSync(path.join(OUT, 'vercel.json'), JSON.stringify({
+  cleanUrls: true,
+  rewrites: [{ source: '/(.*)', destination: '/index.html' }],
+}, null, 2) + '\n');
+
+// GitHub Pages: không có cấu hình máy chủ, dùng mẹo 404.html = index.html
+fs.copyFileSync(indexPath, path.join(OUT, '404.html'));
+// và .nojekyll để GitHub không bỏ qua các file/thư mục bắt đầu bằng dấu _
+fs.writeFileSync(path.join(OUT, '.nojekyll'), '');
+
 /* ---------------------------------------------------------------- xong */
 
 const total = walk(OUT).length;

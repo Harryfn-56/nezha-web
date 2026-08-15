@@ -281,3 +281,67 @@ File `_mau-tro-choi.js` và tài liệu này chính là để phiên Claude sau 
 | Logo | `public/assets/logo.png` (và `logo-trong-suot.png`) |
 
 Sau mọi thay đổi: `npm run build` → tải lại `dist/` lên Hostinger.
+
+---
+
+# E. Các nơi host miễn phí (thay cho Hostinger)
+
+Website này là trang tĩnh nên host ở đâu cũng được. File build `dist/` đã kèm sẵn
+cấu hình cho cả 4 nền tảng dưới đây — không phải sửa gì thêm.
+
+| | Cloudflare Pages | Netlify | Vercel | GitHub Pages |
+|---|---|---|---|---|
+| Băng thông/tháng | **Không giới hạn** | 100 GB | 100 GB | 100 GB (mềm) |
+| Tên miền riêng | ✅ miễn phí | ✅ | ✅ | ✅ |
+| HTTPS | ✅ tự động | ✅ | ✅ | ✅ |
+| Tự deploy khi push GitHub | ✅ | ✅ | ✅ | ✅ (qua Actions) |
+| Chống DDoS | ✅ | ❌ | ❌ | ❌ |
+| Cho dùng mục đích kinh doanh | ✅ | ✅ | ✅ | ⚠️ Điều khoản cấm dùng cho SaaS/thương mại |
+
+## Khuyến nghị: Cloudflare Pages
+
+Lý do hợp với trung tâm dạy học:
+
+- **Băng thông không giới hạn** — cả lớp 30 em cùng vào chơi Kahoot không lo vượt hạn mức
+- Máy chủ ở ~300 thành phố, có node tại Việt Nam nên **tải nhanh**
+- Nối thẳng với GitHub: mỗi lần `git push` là website **tự cập nhật**, không cần FTP
+- Được địa chỉ sẵn dạng `nezha-web.pages.dev`, gắn tên miền riêng sau cũng được
+
+### Các bước (khoảng 5 phút)
+
+1. Vào https://dash.cloudflare.com → đăng ký miễn phí
+2. Menu trái → **Workers & Pages** → **Create** → thẻ **Pages** → **Connect to Git**
+3. Cho phép Cloudflare truy cập GitHub → chọn repo **nezha-web**
+4. Ở phần cấu hình build, điền đúng 2 ô:
+   - **Build command:** `npm run build`
+   - **Build output directory:** `dist`
+5. Bấm **Save and Deploy**, chờ ~1 phút
+
+Xong. Website chạy tại `https://nezha-web.pages.dev`. Từ giờ mỗi lần `git push`
+là Cloudflare tự build lại và cập nhật.
+
+**Gắn tên miền riêng:** vào project vừa tạo → **Custom domains** → **Set up a
+domain** → nhập tên miền → làm theo hướng dẫn đổi DNS.
+
+## Netlify / Vercel
+
+Cách làm gần như hệt Cloudflare: đăng nhập bằng GitHub → Import repo →
+build command `npm run build`, output `dist` → Deploy.
+
+## GitHub Pages — có 1 lưu ý quan trọng
+
+GitHub Pages đặt website tại `harryfn-56.github.io/nezha-web/`, tức là nằm trong
+**thư mục con**. Website này dùng đường dẫn tuyệt đối (`/js/main.js`) nên đặt ở
+thư mục con sẽ **không chạy**.
+
+Chỉ dùng được GitHub Pages nếu anh **gắn tên miền riêng** (khi đó website nằm ở
+gốc tên miền). Ngoài ra điều khoản của GitHub Pages không cho phép dùng cho mục
+đích thương mại — trung tâm dạy học có thu học phí thì nên tránh.
+
+→ Vì vậy **Cloudflare Pages là lựa chọn tốt nhất** cho dự án này.
+
+## Vẫn muốn dùng Hostinger?
+
+Không sao cả — Hostinger vẫn chạy tốt và anh đã có sẵn cấu hình `.htaccess`.
+Có thể dùng **cả hai**: Cloudflare Pages làm bản chính (nhanh, tự cập nhật),
+Hostinger làm bản dự phòng.
