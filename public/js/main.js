@@ -11,25 +11,22 @@ import * as home from './views/home.js';
 import * as admin from './views/admin.js';
 import * as live from './views/live.js';
 
-/* --------------------------------------------------- các trò chơi */
-const GAME_MODULES = {
-  flashcard: () => import('./games/flashcard.js'),
-  quiz: () => import('./games/quiz.js'),
-  match: () => import('./games/match.js'),
-  pinyin: () => import('./games/pinyin.js'),
-  listen: () => import('./games/listen.js'),
-  sentence: () => import('./games/sentence.js'),
-  datequiz: () => import('./games/datequiz.js'),
-  rush: () => import('./games/rush.js'),
-};
-
+/* ---------------------------------------------------- các trò chơi
+ * Không cần khai báo danh sách ở đây: mỗi trò chơi có `id` trong data.js
+ * sẽ tự động nạp file public/js/games/<id>.js
+ * → Muốn thêm trò chơi mới chỉ cần làm 2 việc:
+ *     1. Tạo file  public/js/games/ten-tro-choi.js  (xem file mẫu _mau-tro-choi.js)
+ *     2. Thêm 1 mục vào mảng GAMES trong data.js với id = 'ten-tro-choi'
+ */
 async function playView({ lessonId, gameId }) {
   const u = currentUser();
   if (!u) return go('/', true);
 
   const game = getGame(gameId);
-  const loader = GAME_MODULES[gameId];
-  if (!game || !loader) return go('/hoc', true);
+  if (!game) return go('/hoc', true);
+  // Chỉ cho phép chữ thường, số và dấu gạch ngang để tránh nạp nhầm file
+  const safeId = String(gameId).replace(/[^a-z0-9-]/gi, '');
+  const loader = () => import(`./games/${safeId}.js`);
 
   const lesson = await getLessonById(lessonId);
   if (!lesson || !lesson.words || lesson.words.length < 4) {
@@ -41,8 +38,14 @@ async function playView({ lessonId, gameId }) {
   const container = el('div');
   mount(container);
 
-  const mod = await loader();
-  mod.play(game, lesson, container);
+  try {
+    const mod = await loader();
+    mod.play(game, lesson, container);
+  } catch (e) {
+    console.error(e);
+    toast(`Chưa có file games/${safeId}.js cho trò chơi này`, 'bad');
+    go('/hoc', true);
+  }
 }
 
 /* --------------------------------------------------- đường dẫn */
