@@ -17,7 +17,7 @@ export const CONFIG = {
    *    Dùng để vào trang Quản trị (xem điểm, thêm bài, mở phòng Kahoot).
    *    ⚠️ Hãy đổi thành mật khẩu của riêng bạn trước khi đưa lên mạng.
    * ---------------------------------------------------------------- */
-  teacherPassword: 'nezha2026',
+  teacherPassword: 'Nezha@2026',
 
   /* ------------------------------------------------------------------
    * 3) DANH SÁCH MÃ LỚP (chính là mật khẩu của học sinh)
@@ -46,8 +46,8 @@ export const CONFIG = {
    *      B4. npm run build  →  tải lại dist/ lên Hostinger
    * ---------------------------------------------------------------- */
   supabase: {
-    url: '',
-    anonKey: '',
+    url: 'https://bgduzfskeqfnboytktus.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJnZHV6ZnNrZXFmbmJveXRrdHVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY3OTQxMTEsImV4cCI6MjEwMjM3MDExMX0.oU89B3qG0GJlJ1Zup3l0T9_Ttrch4vWgo712oJ2ETqU',
   },
 
   /* ------------------------------------------------------------------
