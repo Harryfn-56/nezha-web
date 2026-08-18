@@ -146,7 +146,7 @@ let html = fs.readFileSync(indexPath, 'utf8');
 html = html
   .replace(/(href="\/css\/[^"?]+\.css)"/g, `$1?v=${version}"`)
   .replace(/(src="\/js\/[^"?]+\.js)"/g, `$1?v=${version}"`)
-  .replace('<!--BUILD_VERSION-->', version);
+  .replace('__BUILD_VERSION__', version);
 fs.writeFileSync(indexPath, html);
 
 // Nội dung index.html cần cho ESM cache busting của các module con

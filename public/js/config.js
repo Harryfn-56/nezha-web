@@ -13,11 +13,16 @@ export const CONFIG = {
   siteTagline: 'Học tiếng Trung — Chơi mà nhớ',
 
   /* ------------------------------------------------------------------
-   * 2) MẬT KHẨU GIÁO VIÊN
-   *    Dùng để vào trang Quản trị (xem điểm, thêm bài, mở phòng Kahoot).
-   *    ⚠️ Hãy đổi thành mật khẩu của riêng bạn trước khi đưa lên mạng.
+   * 2) TÀI KHOẢN QUẢN TRỊ (chủ trung tâm)
+   *    Đây là tài khoản cao nhất: xem điểm TẤT CẢ các lớp, thêm/xoá lớp,
+   *    và tạo tài khoản cho từng giáo viên ngay trong trang Quản trị.
+   *    ⚠️ Hãy đổi mật khẩu trước khi đưa website lên mạng.
+   *
+   *    Các giáo viên khác KHÔNG cần khai báo ở đây — quản trị viên vào
+   *    trang Quản trị → thẻ "Giáo viên" → Thêm giáo viên là xong.
    * ---------------------------------------------------------------- */
-  teacherPassword: 'Nezha@2026',
+  adminUsername: 'admin',
+  teacherPassword: 'nezha2026',   // mật khẩu của tài khoản quản trị
 
   /* ------------------------------------------------------------------
    * 3) DANH SÁCH MÃ LỚP (chính là mật khẩu của học sinh)
@@ -46,8 +51,8 @@ export const CONFIG = {
    *      B4. npm run build  →  tải lại dist/ lên Hostinger
    * ---------------------------------------------------------------- */
   supabase: {
-    url: 'https://bgduzfskeqfnboytktus.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJnZHV6ZnNrZXFmbmJveXRrdHVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY3OTQxMTEsImV4cCI6MjEwMjM3MDExMX0.oU89B3qG0GJlJ1Zup3l0T9_Ttrch4vWgo712oJ2ETqU',
+    url: '',
+    anonKey: '',
   },
 
   /* ------------------------------------------------------------------
@@ -60,6 +65,25 @@ export const CONFIG = {
     liveSeconds: 20,            // thời gian 1 câu trong phòng Kahoot
     rushLives: 3,               // số mạng trong game Na Tra đại chiến
     passPercent: 60,            // % để coi là "đạt"
+
+    /* --- Thẻ lật ghi nhớ: chia bộ thẻ thành từng chủ đề nhỏ ---------
+     * Bài nào có sẵn cột "Nhóm/chủ đề" thì chia theo chủ đề.
+     * Bài nào chưa chia chủ đề thì tự cắt thành từng phần, mỗi phần
+     * flashcardChunk từ.                                             */
+    flashcardChunk: 10,
+
+    /* --- Na Tra đại chiến: chữ rơi nhanh dần -----------------------
+     * Cứ mỗi rushLevelEvery câu thì lên 1 cấp, chữ rơi nhanh hơn.
+     * Thời gian rơi (giây) = rushStartSeconds × rushSpeedUp^(cấp − 1),
+     * nhanh nhất là rushMinSeconds.
+     *   Ví dụ với thông số mặc định:
+     *     Cấp 1: 4.5s · Cấp 2: 3.7s · Cấp 3: 3.0s · Cấp 4: 2.5s
+     *     Cấp 5: 2.0s · Cấp 6: 1.7s · Cấp 7 trở đi: 1.4s
+     * Muốn khó hơn nữa: giảm rushStartSeconds hoặc giảm rushSpeedUp. */
+    rushStartSeconds: 4.5,      // thời gian rơi ở cấp 1 (giây)
+    rushLevelEvery: 6,          // bao nhiêu câu thì tăng tốc 1 lần
+    rushSpeedUp: 0.82,          // mỗi cấp còn 82% thời gian của cấp trước
+    rushMinSeconds: 1.4,        // nhanh nhất (giây)
   },
 };
 

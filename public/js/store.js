@@ -21,6 +21,7 @@ const LS = {
   classes: 'nz_classes',
   lessons: 'nz_lessons',
   rooms: 'nz_rooms',
+  teachers: 'nz_teachers',
 };
 
 const read = (k, def) => {
@@ -111,7 +112,13 @@ export async function removeClass(code) {
 /* ==================================================================== */
 
 export function currentUser() {
-  return read(LS.user, null);
+  const u = read(LS.user, null);
+  // Tài khoản giáo viên đăng nhập từ bản cũ (chưa có nhiều tài khoản)
+  // vẫn được coi là quản trị viên để không mất quyền xem.
+  if (u && u.role === 'teacher' && u.isAdmin === undefined && u.id === 'teacher') {
+    u.isAdmin = true;
+  }
+  return u;
 }
 
 export function logout() {
@@ -153,14 +160,134 @@ export async function loginStudent(name, classCode) {
   return user;
 }
 
-/** Giáo viên: mật khẩu trong config.js */
-export function loginTeacher(password) {
-  if (String(password) !== CONFIG.teacherPassword) {
-    throw new Error('Mật khẩu giáo viên không đúng');
+/**
+ * Đăng nhập giáo viên.
+ *  • Tài khoản quản trị: CONFIG.adminUsername + CONFIG.teacherPassword
+ *    (để trống ô tài khoản mà gõ đúng mật khẩu quản trị cũng vào được —
+ *     giữ nguyên thói quen cũ).
+ *  • Giáo viên thường: tài khoản do quản trị viên tạo trong trang Quản trị.
+ */
+export async function loginTeacher(username, password) {
+  const u = String(username || '').trim().toLowerCase();
+  const pw = String(password || '');
+
+  const adminUser = String(CONFIG.adminUsername || 'admin').toLowerCase();
+  if ((!u || u === adminUser) && pw && pw === CONFIG.teacherPassword) {
+    const user = {
+      role: 'teacher', isAdmin: true, name: 'Quản trị viên',
+      username: adminUser, id: 'teacher', classes: [], since: Date.now(),
+    };
+    write(LS.user, user);
+    return user;
   }
-  const user = { role: 'teacher', name: 'Giáo viên', id: 'teacher', since: Date.now() };
+
+  if (!u) throw new Error('Vui lòng nhập tài khoản giáo viên');
+
+  const teachers = await listTeachers();
+  const found = teachers.find((t) => String(t.username).toLowerCase() === u);
+  if (!found || String(found.password) !== pw) {
+    throw new Error('Tài khoản hoặc mật khẩu không đúng');
+  }
+
+  const user = {
+    role: 'teacher',
+    isAdmin: false,
+    name: found.name || found.username,
+    username: found.username,
+    id: 'gv::' + found.username,
+    classes: Array.isArray(found.classes) ? found.classes : [],
+    since: Date.now(),
+  };
   write(LS.user, user);
   return user;
+}
+
+/* ==================================================================== */
+/*  Tài khoản giáo viên (do quản trị viên tạo)                          */
+/* ==================================================================== */
+
+function normTeacher(t) {
+  return {
+    username: String(t.username || '').trim().toLowerCase(),
+    name: t.name || t.username,
+    password: String(t.password || ''),
+    classes: Array.isArray(t.classes) ? t.classes : (t.classes ? [t.classes] : []),
+  };
+}
+
+export async function listTeachers() {
+  if (CLOUD) {
+    try {
+      const rows = await sb('teachers', { query: '?select=*&order=username' });
+      if (rows) return rows.map(normTeacher);
+    } catch (e) { console.warn('listTeachers:', e.message); }
+  }
+  return read(LS.teachers, []).map(normTeacher);
+}
+
+export async function saveTeacher(t) {
+  const row = normTeacher(t);
+  if (!row.username) throw new Error('Tài khoản không được để trống');
+  if (!/^[a-z0-9._-]+$/.test(row.username)) {
+    throw new Error('Tài khoản chỉ gồm chữ thường, số và dấu . _ - (không dấu, không khoảng trắng)');
+  }
+  if (row.password.length < 4) throw new Error('Mật khẩu cần ít nhất 4 ký tự');
+  if (row.username === String(CONFIG.adminUsername || 'admin').toLowerCase()) {
+    throw new Error('Tài khoản này trùng với tài khoản quản trị, hãy chọn tên khác');
+  }
+
+  const local = read(LS.teachers, []).filter((x) => String(x.username).toLowerCase() !== row.username);
+  local.push(row);
+  write(LS.teachers, local);
+
+  if (CLOUD) {
+    try {
+      await sb('teachers', { method: 'POST', body: row, prefer: 'resolution=merge-duplicates' });
+    } catch (e) { console.warn('Không lưu được giáo viên lên cloud:', e.message); }
+  }
+  return row;
+}
+
+export async function removeTeacher(username) {
+  const u = String(username).toLowerCase();
+  write(LS.teachers, read(LS.teachers, []).filter((x) => String(x.username).toLowerCase() !== u));
+  if (CLOUD) {
+    try { await sb('teachers', { method: 'DELETE', query: `?username=eq.${encodeURIComponent(u)}` }); }
+    catch (e) { console.warn(e.message); }
+  }
+}
+
+/**
+ * Giáo viên tự tạo lớp thì lớp đó được gán luôn cho chính họ.
+ * Cập nhật cả bản ghi giáo viên lẫn phiên đăng nhập đang mở.
+ */
+export async function assignClassToSelf(code) {
+  const user = currentUser();
+  if (!user || user.role !== 'teacher' || user.isAdmin) return;
+
+  const c = String(code).trim().toUpperCase();
+  const list = Array.isArray(user.classes) ? user.classes.slice() : [];
+  if (!list.some((x) => String(x).toUpperCase() === c)) list.push(c);
+
+  const teachers = await listTeachers();
+  const me = teachers.find((t) => t.username === String(user.username).toLowerCase());
+  if (me) {
+    try { await saveTeacher({ ...me, classes: list }); }
+    catch (e) { console.warn('Không cập nhật được lớp cho giáo viên:', e.message); }
+  }
+
+  user.classes = list;
+  write(LS.user, user);
+  return list;
+}
+
+/** Giáo viên này được xem những lớp nào? (quản trị viên: tất cả) */
+export function canSeeClass(user, code) {
+  if (!user || user.role !== 'teacher') return false;
+  if (user.isAdmin) return true;
+  const list = user.classes || [];
+  if (!list.length) return false;
+  return list.some((c) => String(c).toUpperCase() === String(code || '').toUpperCase());
 }
 
 /* ==================================================================== */

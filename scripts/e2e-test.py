@@ -2,7 +2,7 @@
 import sys, time
 from playwright.sync_api import sync_playwright
 
-BASE = "http://localhost:4173"
+BASE = "http://localhost:5173"
 SHOTS = "/home/claude/shots"
 errors = []
 console_errors = []
@@ -12,7 +12,8 @@ def snap(page, name, full=False):
 
 with sync_playwright() as p:
     b = p.chromium.launch()
-    page = b.new_page(viewport={"width": 1280, "height": 900})
+    ctx = b.new_context(viewport={"width": 1280, "height": 900})
+    page = ctx.new_page()
     page.on("console", lambda m: console_errors.append(m.text) if m.type == "error" else None)
     page.on("pageerror", lambda e: console_errors.append("PAGEERROR: " + str(e)))
 
@@ -54,6 +55,65 @@ with sync_playwright() as p:
             errors.append(f"{gid}: không dựng được khung game")
         snap(page, shot)
         print(f"✅ Game {gid} hiển thị")
+
+    # ------------------------------- 2b. Thẻ lật: màn chọn chủ đề
+    page.goto(f"{BASE}/choi/tn1101-1-5/flashcard", wait_until="networkidle")
+    time.sleep(1.2)
+    if "chủ đề" not in page.content():
+        errors.append("flashcard: không hiện màn chọn chủ đề")
+    topics = page.query_selector_all(".game-card")
+    print(f"✅ Thẻ lật có {len(topics)} lựa chọn chủ đề (kể cả Tất cả)")
+    if len(topics) < 3:
+        errors.append("flashcard: quá ít chủ đề")
+    snap(page, "03b-flashcard-topics", full=True)
+    topics[0].click()
+    time.sleep(1.2)
+    if not page.query_selector(".fc"):
+        errors.append("flashcard: chọn chủ đề xong không vào được bộ thẻ")
+    else:
+        print("✅ Chọn chủ đề → vào bộ thẻ OK")
+    snap(page, "03c-flashcard-deck")
+
+    # ------------------------------- 2c. Na Tra: tăng tốc sau mỗi 6 câu
+    page.goto(f"{BASE}/choi/tn1101-1-5/rush", wait_until="networkidle")
+    time.sleep(1.0)
+    # Tra nghĩa đúng để trả lời chuẩn, nhờ vậy chơi được qua nhiều cấp
+    meaning = page.evaluate(
+        "async () => { const m = await import('/js/data.js');"
+        " const o = {}; m.LESSONS[0].words.forEach(w => o[w.hz] = w.vi); return o; }")
+    speeds = []
+    for _ in range(8):
+        faller = page.query_selector(".faller")
+        if not faller:
+            break
+        chip = page.query_selector(".chip-soft")
+        if chip:
+            s = chip.inner_text()
+            if not speeds or speeds[-1] != s:
+                speeds.append(s)
+        want = meaning.get(faller.inner_text().strip(), None)
+        opts = page.query_selector_all(".opt:not(.locked)")
+        target = next((o for o in opts if want and want in o.inner_text()), None)
+        (target or opts[0]).click()
+        time.sleep(1.0)
+    html = page.content()
+    if "Cấp 2" not in html:
+        errors.append(f"rush: không lên được cấp 2 (các mốc tốc độ: {speeds})")
+    elif len(speeds) < 2:
+        errors.append(f"rush: tốc độ rơi không đổi ({speeds})")
+    else:
+        print(f"✅ Na Tra đại chiến tăng tốc theo cấp: {' → '.join(speeds)}")
+    snap(page, "10b-rush-level", full=True)
+
+    # ------------------------------- 2d. Bảng số 1–99
+    page.goto(f"{BASE}/bang-so", wait_until="networkidle")
+    time.sleep(1.0)
+    n_cells = len(page.query_selector_all(".num-cell"))
+    if n_cells != 99:
+        errors.append(f"bảng số: cần 99 ô, thấy {n_cells}")
+    else:
+        print("✅ Bảng số 1–99 đủ 99 ô")
+    snap(page, "02b-bang-so", full=True)
 
     # ------------------------------------ 3. Chơi thử trắc nghiệm trọn vẹn
     page.goto(f"{BASE}/choi/tn1101-1-5/quiz", wait_until="networkidle")
@@ -120,7 +180,71 @@ with sync_playwright() as p:
         page.click(f"button:has-text('{tab.split(' ',1)[1]}')")
         time.sleep(1.2)
         snap(page, shot, full=True)
-    print("✅ 4 thẻ quản trị hoạt động")
+    print("✅ Các thẻ quản trị hoạt động")
+
+    # ------------------------- 6b. Tạo tài khoản giáo viên rồi đăng nhập thử
+    page.click("button:has-text('Giáo viên')")
+    time.sleep(1.0)
+    page.fill("input[placeholder*='colan']", "colan")
+    page.fill("input[placeholder*='Cô Lan']", "Cô Lan")
+    page.fill("input[placeholder*='4 ký tự']", "lan12345")
+    boxes = page.query_selector_all("input[type=checkbox]")
+    if boxes:
+        boxes[0].click()          # gán lớp đầu tiên
+    page.click("button:has-text('Tạo tài khoản')")
+    time.sleep(1.5)
+    snap(page, "17b-admin-teachers", full=True)
+    if "colan" not in page.content():
+        errors.append("teachers: không tạo được tài khoản giáo viên")
+    else:
+        print("✅ Quản trị viên tạo được tài khoản giáo viên")
+
+    page.evaluate("localStorage.removeItem('nz_user')")
+    page.goto(BASE, wait_until="networkidle")
+    time.sleep(0.8)
+    page.click("button:has-text('Giáo viên')")
+    time.sleep(0.4)
+    page.fill("input[placeholder*='colan']", "colan")
+    page.fill("input[type=password]", "lan12345")
+    page.click("button:has-text('Vào trang quản trị')")
+    page.wait_for_url("**/quan-tri", timeout=8000)
+    time.sleep(1.5)
+    snap(page, "17c-teacher-view", full=True)
+    body = page.content()
+    if "Cô Lan" not in body:
+        errors.append("teachers: đăng nhập giáo viên không hiện đúng tên")
+    elif "Giáo viên" in body and "👩‍🏫 Giáo viên" in body:
+        errors.append("teachers: giáo viên thường vẫn thấy thẻ quản lý tài khoản")
+    else:
+        print("✅ Giáo viên đăng nhập riêng, không thấy thẻ quản lý tài khoản")
+
+    # ------------------------- 6c. Giáo viên thường tự tạo lớp của mình
+    page.click("button:has-text('Lớp học')")
+    time.sleep(1.0)
+    page.fill("input[placeholder*='TH2002']", "CL9999")
+    page.fill("input[placeholder*='thiếu nhi']", "Lớp thử của Cô Lan")
+    page.click("button:has-text('Thêm lớp')")
+    time.sleep(1.5)
+    snap(page, "17d-teacher-add-class", full=True)
+    mine = page.evaluate("() => (JSON.parse(localStorage.getItem('nz_user'))||{}).classes || []")
+    if "CL9999" not in page.content():
+        errors.append("classes: giáo viên không tự tạo được lớp")
+    elif "CL9999" not in mine:
+        errors.append(f"classes: lớp mới không được gán cho giáo viên ({mine})")
+    else:
+        print(f"✅ Giáo viên tự tạo lớp và được gán ngay: {mine}")
+
+    # quay lại tài khoản quản trị cho các bước sau
+    page.evaluate("localStorage.removeItem('nz_user')")
+    page.goto(BASE, wait_until="networkidle")
+    time.sleep(0.8)
+    page.click("button:has-text('Giáo viên')")
+    time.sleep(0.4)
+    page.fill("input[placeholder*='colan']", "admin")
+    page.fill("input[type=password]", "nezha2026")
+    page.click("button:has-text('Vào trang quản trị')")
+    page.wait_for_url("**/quan-tri", timeout=8000)
+    time.sleep(1.2)
 
     # -------------------------------- 7. Nhập bài mới bằng cách dán text
     page.click("button:has-text('Bài học')")
@@ -149,6 +273,17 @@ with sync_playwright() as p:
     else:
         errors.append("live: không tạo được PIN")
 
+    # Học sinh vào phòng bằng 1 tab khác (dùng chung localStorage của phòng)
+    stu = ctx.new_page()
+    stu.goto(BASE + "/vao-phong", wait_until="networkidle")
+    time.sleep(1.0)
+    stu.fill("input[placeholder='000000']", pin)
+    stu.fill("input[placeholder*='Họ tên']", "Trò Thử")
+    stu.click("button:has-text('Vào phòng')")
+    time.sleep(1.5)
+    if "Đã vào phòng" not in stu.content():
+        errors.append("live: học sinh không vào được phòng")
+
     page.click("button:has-text('Bắt đầu chơi')")
     time.sleep(2)
     snap(page, "21-live-question")
@@ -156,6 +291,35 @@ with sync_playwright() as p:
         print("✅ Phòng Kahoot chạy được câu hỏi")
     else:
         errors.append("live: không hiện câu hỏi")
+
+    # -------- 8b. Học sinh chọn xong CHƯA được biết đúng/sai
+    stu.wait_for_selector(".k-opt", timeout=8000)
+    time.sleep(0.5)
+    stu.query_selector_all(".k-opt")[0].click()
+    time.sleep(0.8)
+    after_pick = stu.content()
+    snap(stu, "21b-student-waiting", full=True)
+    leaked = ("Chính xác!" in after_pick) or ("Chưa đúng rồi" in after_pick) or ("Đáp án đúng" in after_pick)
+    if leaked:
+        errors.append("live: học sinh thấy đáp án ngay khi vừa chọn (chưa công bố)")
+    elif "Đã ghi nhận" not in after_pick:
+        errors.append("live: không hiện màn chờ sau khi học sinh chọn")
+    else:
+        print("✅ Học sinh chọn xong chỉ thấy 'Đã ghi nhận', chưa biết đúng/sai")
+
+    # -------- 8c. Cả lớp trả lời xong → thầy/cô công bố → học sinh mới thấy đáp án
+    for _ in range(14):
+        time.sleep(1.0)
+        if "Đáp án đúng" in stu.content():
+            break
+    revealed = stu.content()
+    snap(stu, "21c-student-reveal", full=True)
+    if "Đáp án đúng" not in revealed:
+        errors.append("live: công bố xong học sinh vẫn không thấy đáp án")
+    else:
+        print("✅ Cả lớp trả lời xong → công bố đáp án cho học sinh")
+    snap(page, "21d-host-reveal", full=True)
+    stu.close()
 
     # ---------------------------------------------------- 9. Mobile
     m = b.new_page(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)

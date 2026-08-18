@@ -54,6 +54,12 @@ Màu sắc
 
 Dòng không có chữ Hán (như `Gia đình`, `Màu sắc`) sẽ tự thành **tên nhóm từ**.
 
+> 💡 Tên nhóm rất đáng để đặt: trò **Thẻ lật ghi nhớ** dùng chính các nhóm này
+> làm màn hình "Em muốn ôn chủ đề nào?", nên học sinh học từng chủ đề nhỏ thay
+> vì phải lật hết mấy chục thẻ trong một lượt. Bài nào không có tên nhóm thì
+> website tự cắt thành từng phần 10 từ (sửa số này ở `config.js` →
+> `game.flashcardChunk`).
+
 **Cũng được** — chỉ liệt kê chữ Hán, cách nhau bằng dấu phẩy hoặc xuống dòng:
 
 ```
@@ -146,6 +152,69 @@ Không hiện gì = đúng cú pháp.
 **Quản trị** → **🏫 Lớp học** → nhập mã lớp + tên → **Thêm lớp**.
 
 Hoặc sửa mảng `classes` trong `public/js/config.js` để lớp có sẵn trên mọi máy.
+
+---
+
+## Tài khoản cho nhiều giáo viên
+
+Website có 2 loại tài khoản:
+
+| | Quản trị viên | Giáo viên |
+|---|---|---|
+| Đăng nhập | tài khoản `admin` + mật khẩu trong `config.js` | tài khoản do quản trị viên cấp |
+| Xem điểm | tất cả các lớp | chỉ lớp được gán |
+| Tạo lớp mới | ✅ | ✅ (lớp tự tạo được gán ngay cho mình) |
+| Xoá lớp | ✅ | ❌ |
+| Thêm bài học | ✅ | ✅ |
+| Mở phòng Kahoot | ✅ | ✅ |
+| Tạo tài khoản giáo viên | ✅ | ❌ |
+
+### Cấp tài khoản cho một giáo viên
+
+1. Đăng nhập bằng tài khoản quản trị (`admin` + mật khẩu trong `config.js`)
+2. **Quản trị** → thẻ **👩‍🏫 Giáo viên**
+3. Điền: **Tài khoản** (viết liền không dấu, ví dụ `colan`), **Tên hiển thị**
+   (ví dụ `Cô Lan`), **Mật khẩu**, rồi tick các **lớp** giáo viên đó phụ trách
+4. Bấm **Tạo tài khoản**
+
+Giáo viên vào trang chủ → thẻ **👩‍🏫 Giáo viên** → gõ tài khoản + mật khẩu vừa
+được cấp. Họ chỉ nhìn thấy điểm và học sinh của lớp mình.
+
+Trong bảng danh sách còn có nút **🔑 Đổi mật khẩu** và **🏫 Gán lớp** để sửa
+lại sau, và nút 🗑️ để xoá tài khoản.
+
+Giáo viên cũng **tự mở lớp mới được**: vào **Quản trị → 🏫 Lớp học** → nhập mã
+lớp + tên lớp → **Thêm lớp**. Lớp vừa tạo tự động thuộc về tài khoản đó, không
+cần nhờ quản trị viên gán. Chỉ việc **xoá lớp** mới cần quản trị viên.
+
+### Phòng Kahoot
+
+Mọi giáo viên (kể cả tài khoản thường) đều mở được phòng: nút **⚡ Phòng Kahoot**
+trên thanh trên cùng hoặc trong trang Quản trị.
+
+**Cách công bố đáp án:** học sinh bấm chọn xong chỉ thấy "📨 Đã ghi nhận!" và ô
+mình đã chọn — **chưa biết đúng hay sai**. Đáp án chỉ hiện ra khi:
+
+- cả lớp đã trả lời xong, hoặc
+- hết giờ của câu đó, hoặc
+- thầy/cô bấm **👁️ Công bố đáp án ngay** (dùng khi có bạn vắng/máy hỏng)
+
+Nhờ vậy các bạn trả lời sau không nhìn được đáp án của bạn bên cạnh.
+
+> ⚠️ **Quan trọng:** tài khoản giáo viên chỉ dùng chung được giữa các máy khi
+> đã bật Supabase (thẻ **☁️ Kết nối**). Chưa bật Supabase thì tài khoản chỉ
+> nằm trên chính máy đã tạo.
+
+### Đổi mật khẩu quản trị
+
+Mở `public/js/config.js`, sửa 2 dòng:
+
+```js
+adminUsername: 'admin',           // tên đăng nhập của quản trị viên
+teacherPassword: 'nezha2026',     // ⚠️ đổi mật khẩu này
+```
+
+rồi `npm run build` và đưa lại bản mới lên host.
 
 ---
 
@@ -268,15 +337,20 @@ File `_mau-tro-choi.js` và tài liệu này chính là để phiên Claude sau 
 
 | Muốn đổi | Mở file |
 |---|---|
-| Mật khẩu giáo viên | `public/js/config.js` → `teacherPassword` |
+| Mật khẩu quản trị | `public/js/config.js` → `teacherPassword` |
+| Tên đăng nhập quản trị | `public/js/config.js` → `adminUsername` |
+| Tài khoản các giáo viên khác | Trang **Quản trị → 👩‍🏫 Giáo viên** (không cần sửa code) |
 | Danh sách mã lớp | `public/js/config.js` → `classes` |
 | Tên trung tâm, khẩu hiệu | `public/js/config.js` → `siteName`, `siteTagline` |
 | Số câu mỗi lượt, thời gian trả lời, số mạng | `public/js/config.js` → `game` |
+| Chủ đề thẻ lật (bài chưa chia nhóm cắt mấy từ 1 phần) | `public/js/config.js` → `game.flashcardChunk` |
+| Tốc độ rơi & mức tăng khó của Na Tra đại chiến | `public/js/config.js` → `game.rushStartSeconds`, `rushLevelEvery`, `rushSpeedUp`, `rushMinSeconds` |
 | Kết nối Supabase | `public/js/config.js` → `supabase` |
 | Từ vựng, mẫu câu, danh sách trò chơi | `public/js/data.js` |
 | Từ điển tự tra khi upload file | `public/js/dict.js` |
 | Màu sắc, phông chữ, giao diện | `public/css/style.css` |
 | Nội dung một trò chơi cụ thể | `public/js/games/<tên trò>.js` |
+| Bảng số 1–99 | `public/js/views/numbers.js` |
 | Trang đăng nhập / trang chính / quản trị | `public/js/views/` |
 | Logo | `public/assets/logo.png` (và `logo-trong-suot.png`) |
 

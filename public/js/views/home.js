@@ -62,6 +62,7 @@ export async function view() {
         lessonPicker,
       ]),
       el('div.grow'),
+      el('a.btn.btn-ghost', { href: '/bang-so', 'data-link': '' }, '🔢 Bảng số 1–99'),
     ]),
 
     el('div.stat-row', {}, [

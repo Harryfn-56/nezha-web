@@ -606,6 +606,18 @@ table.tbl tbody tr:hover { background: var(--cream); }
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
 
+/* --- Bảng số 1–99 --------------------------------------------------- */
+.num-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.num-cell {
+  background: #fff; border: 1.5px solid var(--line); border-radius: 14px;
+  padding: 10px 6px; text-align: center; cursor: pointer; font: inherit;
+  transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease;
+}
+.num-cell:hover { transform: translateY(-2px); border-color: var(--orange-500); box-shadow: 0 6px 16px rgba(0,0,0,.07); }
+.num-cell .n { font-size: .78rem; color: var(--ink-3); font-weight: 700; }
+.num-cell .hz { font-size: 1.5rem; font-weight: 800; color: var(--red-700); line-height: 1.25; }
+.num-cell .py { font-size: .74rem; color: var(--orange-600); font-style: italic; }
+
 /* In ấn: giáo viên có thể in bảng điểm */
 @media print {
   .nav, .g-top, .btn, .foot { display: none !important; }

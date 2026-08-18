@@ -84,6 +84,8 @@ export async function host() {
             const lesson = lessons.find((l) => l.id === lessonSel.value);
             questions = makeQuestions(lesson, Number(countSel.value));
             if (questions.length < 4) return toast('Bài này quá ít từ để chơi', 'bad');
+            // Gắn thời gian vào từng câu để máy học sinh chạy đúng đồng hồ
+            questions.forEach((q) => { q.secs = Number(secSel.value); });
             pin = makePin();
             try {
               await createRoom(pin, lesson.id, questions);
@@ -136,8 +138,8 @@ export async function host() {
   async function runQuestion(idx) {
     if (idx >= questions.length) return endScreen();
 
-    const secs = Number(sessionStorage.getItem('nz_live_secs')) || CONFIG.game.liveSeconds;
     const q = questions[idx];
+    const secs = Number(q.secs) || Number(sessionStorage.getItem('nz_live_secs')) || CONFIG.game.liveSeconds;
     await updateRoom(pin, { phase: 'question', q_index: idx, question_started_at: new Date().toISOString() });
 
     const clock = el('div.countdown', {}, String(secs));
@@ -162,6 +164,12 @@ export async function host() {
         el('span.sym', {}, SYMS[i]),
         el('span', { class: q.ask === 'vi2hz' ? 'hz' : '' }, o),
       ]))),
+
+      // Học sinh chỉ thấy đáp án khi thầy/cô công bố. Bình thường website tự
+      // công bố khi cả lớp trả lời xong hoặc hết giờ; nút này để công bố sớm
+      // (ví dụ có bạn vắng, máy hỏng, không bấm được).
+      el('div.row', { style: { justifyContent: 'center', marginTop: '18px' } },
+        el('button.btn.btn-ghost', { onclick: () => finish() }, '👁️ Công bố đáp án ngay')),
     ]));
 
     if (q.ask === 'hz2vi') speak(q.hz);
@@ -170,8 +178,11 @@ export async function host() {
     let stopPoll = watchRoom(pin, (room, players) => {
       const n = players.filter((p) => p.answered_index === idx).length;
       answeredTag.textContent = `${n}/${players.length} đã trả lời`;
-      // Cả lớp trả lời xong thì chuyển sớm
-      if (players.length && n >= players.length) { finish(); }
+      // CẢ LỚP trả lời xong mới công bố đáp án (nếu chưa hết giờ)
+      if (players.length && n >= players.length) {
+        answeredTag.textContent = `✅ Cả lớp đã trả lời (${n}/${players.length})`;
+        setTimeout(finish, 700);
+      }
     }, 900);
 
     let ended = false;
@@ -285,6 +296,12 @@ export function join() {
   let lastPhase = null;
   let lastIndex = -1;
   let myScore = 0;
+  /**
+   * Câu trả lời đang chờ công bố.
+   * Học sinh chọn xong CHƯA biết đúng/sai — phải đợi cả lớp trả lời hoặc hết
+   * giờ, khi thầy/cô công bố (phase = 'reveal') mới hiện kết quả.
+   */
+  let pending = null;
 
   function joinScreen() {
     const pinInput = el('input.input.input-lg', {
@@ -351,7 +368,7 @@ export function join() {
       lastIndex = room.q_index;
 
       if (room.phase === 'question') answerScreen(room);
-      else if (room.phase === 'reveal') { /* màn trả lời tự hiện kết quả */ }
+      else if (room.phase === 'reveal') resultScreen(room);
       else if (room.phase === 'end') finalScreen();
     }, 1000);
   }
@@ -359,7 +376,7 @@ export function join() {
   function answerScreen(room) {
     const q = room.questions[room.q_index];
     if (!q) return;
-    const secs = CONFIG.game.liveSeconds;
+    const secs = Number(q.secs) || CONFIG.game.liveSeconds;
     const started = new Date(room.question_started_at).getTime();
     let answered = false;
 
@@ -402,33 +419,80 @@ export function join() {
       const ok = i === q.answer;
       // Điểm theo tốc độ: trả lời càng nhanh càng nhiều (tối đa 1000 như Kahoot)
       const gained = ok ? Math.round(500 + 500 * (left / (secs * 1000))) : 0;
-      myScore += gained;
 
-      opts.forEach((n, k) => { if (k !== i) n.classList.add('faded'); });
-      ok ? sfx.correct() : sfx.wrong();
+      // Ghi nhớ để công bố sau — CHƯA cộng điểm, CHƯA nói đúng/sai
+      pending = { index: room.q_index, choice: i, ok, gained, q };
+      sfx.flip();
 
+      // Gửi lên máy chủ ngay để thầy/cô đếm được "bao nhiêu bạn đã trả lời"
       try { await submitAnswer(pin, player.id, room.q_index, gained, ok); } catch (e) { console.warn(e); }
 
       clear(root);
-      root.append(el('div.tcenter', { style: { paddingTop: '46px' } }, [
-        el('div', { style: { fontSize: '4.4rem' } }, ok ? '🎉' : '💪'),
-        el('h1', {}, ok ? 'Chính xác!' : 'Chưa đúng rồi'),
-        ok ? el('div.big-score', { style: { color: 'var(--red-600)' } }, '+' + gained) : null,
-        el('p.muted', {}, `Tổng điểm của em: ${myScore}`),
-        el('p.hint', {}, 'Chờ câu tiếp theo...'),
+      root.append(el('div.tcenter', { style: { paddingTop: '40px' } }, [
+        el('div', { style: { fontSize: '3.6rem' } }, '📨'),
+        el('h1', {}, 'Đã ghi nhận!'),
+        el('p.muted', {}, 'Em đã chọn:'),
+        el('div.k-opts', { style: { maxWidth: '340px', margin: '10px auto 0' } },
+          el('div.k-opt.k-' + i, {}, [
+            el('span.sym', {}, SYMS[i]),
+            el('span', { class: q.ask === 'vi2hz' ? 'hz' : '' }, q.options[i]),
+          ])),
+        el('p.hint', { style: { marginTop: '20px' } },
+          '⏳ Chờ các bạn trả lời xong, thầy/cô sẽ công bố đáp án.'),
+        el('div', { style: { marginTop: '16px' } },
+          el('span.chip.chip-soft', {}, `Tổng điểm hiện tại: ${myScore}`)),
       ]));
     }
 
     function lockOut() {
       if (answered) return;
       answered = true;
+      pending = { index: room.q_index, choice: -1, ok: false, gained: 0, q };
       clear(root);
       root.append(el('div.tcenter', { style: { paddingTop: '46px' } }, [
         el('div', { style: { fontSize: '4rem' } }, '⏰'),
         el('h1', {}, 'Hết giờ!'),
-        el('p.muted', {}, `Tổng điểm của em: ${myScore}`),
+        el('p.muted', {}, 'Em chưa kịp chọn đáp án.'),
+        el('p.hint', {}, 'Chờ thầy/cô công bố đáp án nhé...'),
       ]));
     }
+  }
+
+  /** Thầy/cô bấm công bố (phase = reveal) → lúc này học sinh mới biết đúng/sai */
+  function resultScreen(room) {
+    const q = (pending && pending.q) || (room.questions || [])[room.q_index];
+    if (!q) return;
+
+    const answeredThis = pending && pending.index === room.q_index;
+    const ok = !!(answeredThis && pending.ok);
+    const gained = answeredThis ? pending.gained : 0;
+    const choice = answeredThis ? pending.choice : -1;
+
+    if (answeredThis) myScore += gained;
+    pending = null;
+
+    ok ? sfx.correct() : sfx.wrong();
+
+    clear(root);
+    root.append(el('div.wrap-sm', { style: { padding: 0 } }, [
+      el('div.tcenter', { style: { paddingTop: '26px' } }, [
+        el('div', { style: { fontSize: '4rem' } }, ok ? '🎉' : choice < 0 ? '⏰' : '💪'),
+        el('h1', {}, ok ? 'Chính xác!' : choice < 0 ? 'Không kịp trả lời' : 'Chưa đúng rồi'),
+        ok ? el('div.big-score', { style: { color: 'var(--red-600)' } }, '+' + gained) : null,
+      ]),
+      el('div.qbox', { style: { marginTop: '10px' } }, [
+        el('div.lbl', {}, 'Đáp án đúng'),
+        el('div.q-hz', {}, q.hz),
+        el('div.py.q-py', {}, q.py),
+        el('div.bold', { style: { fontSize: '1.15rem' } }, q.vi),
+      ]),
+      el('div.k-opts', {}, q.options.map((o, i) => el('div.k-opt.k-' + i + (i === q.answer ? '' : '.faded'), {}, [
+        el('span.sym', {}, i === q.answer ? '✔' : i === choice ? '✘' : SYMS[i]),
+        el('span', { class: q.ask === 'vi2hz' ? 'hz' : '' }, o),
+      ]))),
+      el('p.muted.tcenter', { style: { marginTop: '16px' } }, `Tổng điểm của em: ${myScore}`),
+      el('p.hint.tcenter', {}, 'Chờ câu tiếp theo...'),
+    ]));
   }
 
   async function finalScreen() {

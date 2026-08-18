@@ -8,6 +8,7 @@ import { GAMES } from '../data.js';
 import {
   currentUser, allScores, summarise, listClasses, addClass, removeClass,
   listLessons, saveLesson, deleteLesson, pingCloud, CLOUD,
+  listTeachers, saveTeacher, removeTeacher, canSeeClass, assignClassToSelf,
 } from '../store.js';
 import { extractText, parseVocab, buildLesson } from '../importer.js';
 import { page } from './layout.js';
@@ -16,15 +17,18 @@ export async function view() {
   const u = currentUser();
   if (!u || u.role !== 'teacher') return go('/', true);
 
-  let tab = sessionStorage.getItem('nz_admin_tab') || 'scores';
+  const isAdmin = !!u.isAdmin;
   const panel = el('div');
 
   const tabs = [
     ['scores', '📊 Bảng điểm'],
     ['classes', '🏫 Lớp học'],
     ['lessons', '📚 Bài học'],
-    ['cloud', '☁️ Kết nối'],
+    ...(isAdmin ? [['teachers', '👩‍🏫 Giáo viên'], ['cloud', '☁️ Kết nối']] : []),
   ];
+
+  let tab = sessionStorage.getItem('nz_admin_tab') || 'scores';
+  if (!tabs.some(([id]) => id === tab)) tab = 'scores';
 
   const tabBar = el('div.seg', { style: { maxWidth: '560px' } },
     tabs.map(([id, label]) => el('button' + (tab === id ? '.on' : ''), {
@@ -39,9 +43,10 @@ export async function view() {
 
   function draw() {
     clear(panel);
-    if (tab === 'scores') renderScores(panel);
-    else if (tab === 'classes') renderClasses(panel);
+    if (tab === 'scores') renderScores(panel, u);
+    else if (tab === 'classes') renderClasses(panel, u);
     else if (tab === 'lessons') renderLessons(panel);
+    else if (tab === 'teachers') renderTeachers(panel);
     else renderCloud(panel);
   }
 
@@ -49,7 +54,10 @@ export async function view() {
     el('div.row-between.wrapf', {}, [
       el('div', {}, [
         el('h1', { style: { marginBottom: '2px' } }, 'Trang quản trị'),
-        el('p.muted.mb-0', {}, 'Theo dõi học sinh, quản lý lớp và bài ôn tập'),
+        el('p.muted.mb-0', {}, isAdmin
+          ? 'Quản trị viên — xem được tất cả các lớp và cấp tài khoản cho giáo viên'
+          : `Xin chào ${u.name} — thầy/cô đang xem ${(u.classes || []).length
+              ? 'lớp: ' + (u.classes || []).join(', ') : 'lớp được phân công'}`),
       ]),
       el('a.btn.btn-orange', { href: '/live', 'data-link': '' }, '⚡ Mở phòng Kahoot'),
     ]),
@@ -64,10 +72,25 @@ export async function view() {
 /*  Thẻ 1 — Bảng điểm                                                   */
 /* ==================================================================== */
 
-async function renderScores(host) {
+async function renderScores(host, user) {
   host.append(el('div.card.center', { style: { minHeight: '120px' } }, 'Đang tải dữ liệu...'));
 
-  const [classes, rows] = await Promise.all([listClasses(), allScores()]);
+  const [allClasses, allRows] = await Promise.all([listClasses(), allScores()]);
+
+  // Giáo viên thường chỉ thấy lớp mình phụ trách
+  const classes = allClasses.filter((c) => canSeeClass(user, c.code));
+  const rows = allRows.filter((r) => canSeeClass(user, r.class_code));
+
+  if (!user.isAdmin && !classes.length) {
+    clear(host);
+    host.append(el('div.card.empty', {}, [
+      el('div.ic', {}, '🔒'),
+      el('div.bold', {}, 'Thầy/cô chưa có lớp nào'),
+      el('div.small', {}, 'Sang thẻ "🏫 Lớp học" để tự tạo lớp của mình, hoặc nhờ quản trị viên gán lớp cho tài khoản này.'),
+    ]));
+    return;
+  }
+
   let filterClass = '';
   let filterGame = '';
 
@@ -187,8 +210,11 @@ function exportCsv(rows) {
 /*  Thẻ 2 — Lớp học                                                     */
 /* ==================================================================== */
 
-async function renderClasses(host) {
-  const classes = await listClasses();
+async function renderClasses(host, user) {
+  const isAdmin = !!user.isAdmin;
+  const all = await listClasses();
+  const classes = isAdmin ? all : all.filter((c) => canSeeClass(user, c.code));
+
   const code = el('input.input', { placeholder: 'VD: TH2002', style: { textTransform: 'uppercase' } });
   const name = el('input.input', { placeholder: 'VD: Lớp thiếu nhi thứ 3-5' });
 
@@ -205,30 +231,161 @@ async function renderClasses(host) {
         el('button.btn', {
           onclick: async () => {
             try {
-              await addClass(code.value, name.value);
-              toast('Đã thêm lớp ' + code.value.toUpperCase(), 'ok');
-              renderClasses(host);
+              const added = await addClass(code.value, name.value);
+              // Giáo viên tự tạo lớp thì lớp đó thuộc về chính thầy/cô
+              if (!isAdmin) await assignClassToSelf(added.code);
+              toast('Đã thêm lớp ' + added.code, 'ok');
+              renderClasses(host, currentUser());
             } catch (e) { toast(e.message, 'bad'); }
           },
         }, 'Thêm lớp'),
       ]),
+      el('div.hint', { style: { marginTop: '8px' } }, isAdmin
+        ? 'Quản trị viên nhìn thấy và quản lý toàn bộ các lớp.'
+        : 'Lớp thầy/cô tự tạo sẽ được gán ngay cho tài khoản của thầy/cô. Muốn xoá lớp thì nhờ quản trị viên.'),
     ]),
 
-    el('div.tbl-wrap', {}, el('table.tbl', {}, [
+    classes.length ? el('div.tbl-wrap', {}, el('table.tbl', {}, [
       el('thead', {}, el('tr', {}, [el('th', {}, 'Mã lớp'), el('th', {}, 'Tên lớp'), el('th', {}, '')])),
       el('tbody', {}, classes.map((c) => el('tr', {}, [
         el('td', {}, el('span.chip', {}, c.code)),
         el('td', {}, c.name),
-        el('td', {}, el('button.btn.btn-plain.btn-sm', {
+        el('td', {}, isAdmin ? el('button.btn.btn-plain.btn-sm', {
           onclick: async () => {
             if (!confirm(`Xoá lớp ${c.code}? Học sinh lớp này sẽ không đăng nhập được nữa.`)) return;
             await removeClass(c.code);
             toast('Đã xoá lớp ' + c.code);
-            renderClasses(host);
+            renderClasses(host, user);
           },
-        }, '🗑️ Xoá')),
+        }, '🗑️ Xoá') : ''),
       ]))),
-    ])),
+    ])) : el('div.card.empty', {}, [
+      el('div.ic', {}, '🏫'),
+      el('div.bold', {}, 'Chưa có lớp nào được gán cho thầy/cô'),
+    ]),
+  );
+}
+
+/* ==================================================================== */
+/*  Thẻ — Tài khoản giáo viên (chỉ quản trị viên thấy)                  */
+/* ==================================================================== */
+
+async function renderTeachers(host) {
+  const [teachers, classes] = await Promise.all([listTeachers(), listClasses()]);
+
+  const username = el('input.input', {
+    placeholder: 'VD: colan', style: { textTransform: 'lowercase' },
+  });
+  const name = el('input.input', { placeholder: 'VD: Cô Lan' });
+  const password = el('input.input', { placeholder: 'Ít nhất 4 ký tự' });
+
+  // Ô tick chọn lớp cho giáo viên mới
+  const picked = new Set();
+  const classPicker = el('div.row.wrapf', { style: { gap: '8px' } },
+    classes.map((c) => {
+      const box = el('input', { type: 'checkbox' });
+      box.onchange = () => { box.checked ? picked.add(c.code) : picked.delete(c.code); };
+      return el('label.chip.chip-soft', {
+        style: { cursor: 'pointer', display: 'inline-flex', gap: '6px', alignItems: 'center' },
+        title: c.name,
+      }, [box, c.code]);
+    }));
+
+  async function submit() {
+    try {
+      await saveTeacher({
+        username: username.value,
+        name: name.value,
+        password: password.value,
+        classes: Array.from(picked),
+      });
+      toast('Đã tạo tài khoản cho ' + (name.value || username.value), 'ok');
+      renderTeachers(host);
+    } catch (e) { toast(e.message, 'bad'); }
+  }
+
+  clear(host);
+  host.append(
+    el('div.alert.alert-info', { style: { marginBottom: '16px' } },
+      'Mỗi giáo viên có tài khoản riêng và chỉ xem được điểm của những lớp được gán. Quản trị viên xem được tất cả.'),
+
+    el('div.card', { style: { marginBottom: '18px' } }, [
+      el('h3', {}, '➕ Thêm giáo viên'),
+      el('div.row.wrapf', {}, [
+        el('label.field.grow', { style: { minWidth: '160px' } }, [
+          el('span', {}, 'Tài khoản đăng nhập'), username,
+          el('div.hint', {}, 'Không dấu, không khoảng trắng'),
+        ]),
+        el('label.field.grow', { style: { minWidth: '160px' } }, [el('span', {}, 'Tên hiển thị'), name]),
+        el('label.field.grow', { style: { minWidth: '150px' } }, [el('span', {}, 'Mật khẩu'), password]),
+      ]),
+      el('div.field', {}, [
+        el('span', {}, 'Lớp phụ trách'),
+        classes.length ? classPicker
+          : el('div.hint', {}, 'Chưa có lớp nào — thêm lớp ở thẻ "Lớp học" trước.'),
+      ]),
+      el('button.btn', { onclick: submit }, '💾 Tạo tài khoản'),
+    ]),
+
+    el('div.sec-title', {}, [el('h2', {}, `👩‍🏫 Danh sách giáo viên (${teachers.length})`), el('div.ln')]),
+
+    teachers.length ? el('div.tbl-wrap', {}, el('table.tbl', {}, [
+      el('thead', {}, el('tr', {}, [
+        el('th', {}, 'Tài khoản'), el('th', {}, 'Tên hiển thị'),
+        el('th', {}, 'Mật khẩu'), el('th', {}, 'Lớp phụ trách'), el('th', {}, ''),
+      ])),
+      el('tbody', {}, teachers.map((t) => el('tr', {}, [
+        el('td', {}, el('span.chip', {}, t.username)),
+        el('td.bold', {}, t.name),
+        el('td', {}, el('span.small.muted', {}, '•'.repeat(Math.min(10, t.password.length)))),
+        el('td', {}, el('div.row.wrapf', { style: { gap: '5px' } },
+          (t.classes.length ? t.classes : ['—']).map((c) => el('span.chip.chip-soft', {}, c)))),
+        el('td', {}, el('div.row', { style: { gap: '6px' } }, [
+          el('button.btn.btn-ghost.btn-sm', {
+            onclick: async () => {
+              const pw = prompt(`Mật khẩu mới cho ${t.name}:`, '');
+              if (pw === null) return;
+              try {
+                await saveTeacher({ ...t, password: pw });
+                toast('Đã đổi mật khẩu', 'ok');
+                renderTeachers(host);
+              } catch (e) { toast(e.message, 'bad'); }
+            },
+          }, '🔑 Đổi mật khẩu'),
+          el('button.btn.btn-ghost.btn-sm', {
+            onclick: async () => {
+              const cur = t.classes.join(', ');
+              const s = prompt(
+                `Lớp mà ${t.name} phụ trách (các mã lớp cách nhau bởi dấu phẩy).\nCác lớp đang có: ${classes.map((c) => c.code).join(', ') || 'chưa có lớp nào'}`,
+                cur);
+              if (s === null) return;
+              const list = s.split(',').map((x) => x.trim().toUpperCase()).filter(Boolean);
+              try {
+                await saveTeacher({ ...t, classes: list });
+                toast('Đã cập nhật lớp phụ trách', 'ok');
+                renderTeachers(host);
+              } catch (e) { toast(e.message, 'bad'); }
+            },
+          }, '🏫 Gán lớp'),
+          el('button.btn.btn-plain.btn-sm', {
+            onclick: async () => {
+              if (!confirm(`Xoá tài khoản ${t.username}?`)) return;
+              await removeTeacher(t.username);
+              toast('Đã xoá tài khoản ' + t.username);
+              renderTeachers(host);
+            },
+          }, '🗑️'),
+        ])),
+      ]))),
+    ])) : el('div.card.empty', {}, [
+      el('div.ic', {}, '👩‍🏫'),
+      el('div.bold', {}, 'Chưa có giáo viên nào'),
+      el('div.small', {}, 'Điền form phía trên để tạo tài khoản đầu tiên.'),
+    ]),
+
+    el('div.alert', { style: { marginTop: '16px' } }, CLOUD
+      ? '☁️ Tài khoản giáo viên được lưu trên máy chủ nên đăng nhập được từ mọi máy.'
+      : '⚠️ Đang ở chế độ ngoại tuyến: tài khoản giáo viên chỉ lưu trên chính máy này. Bật Supabase ở thẻ "Kết nối" để giáo viên đăng nhập được từ máy khác.'),
   );
 }
 

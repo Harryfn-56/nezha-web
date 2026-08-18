@@ -10,6 +10,7 @@ import * as login from './views/login.js';
 import * as home from './views/home.js';
 import * as admin from './views/admin.js';
 import * as live from './views/live.js';
+import * as numbers from './views/numbers.js';
 
 /* ---------------------------------------------------- các trò chơi
  * Không cần khai báo danh sách ở đây: mỗi trò chơi có `id` trong data.js
@@ -58,6 +59,7 @@ route('/', () => {
 
 route('/hoc', () => home.view());
 route('/quan-tri', () => admin.view());
+route('/bang-so', () => numbers.view());
 route('/live', () => live.host());
 route('/vao-phong', () => live.join());
 route('/choi/:lessonId/:gameId', playView);

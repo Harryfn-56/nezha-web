@@ -14,7 +14,7 @@ export const LESSONS = [
     id: 'tn1101-1-5',
     code: 'TN1101',
     title: 'Ôn tập từ vựng bài 1–5',
-    subtitle: 'Chào hỏi · Đại từ · Số đếm · Ngày tháng · Sinh nhật',
+    subtitle: 'Chào hỏi · Đại từ · Số đếm · Ngày tháng · Sinh nhật · Nơi sống · Số điện thoại',
     emoji: '🏮',
     color: 'red',
     words: [
@@ -87,6 +87,32 @@ export const LESSONS = [
       { hz: '老师的生日', py: 'lǎoshī de shēngrì', vi: 'sinh nhật của thầy/cô', tag: 'Sinh nhật' },
       { hz: '出生', py: 'chūshēng', vi: 'sinh ra, ra đời', tag: 'Sinh nhật' },
       { hz: '岁', py: 'suì', vi: 'tuổi', tag: 'Sinh nhật' },
+
+      /* --- Nơi sinh sống ---------------------------------------------- */
+      { hz: '住', py: 'zhù', vi: 'sống, ở', tag: 'Nơi sinh sống' },
+      { hz: '在', py: 'zài', vi: 'ở, tại', tag: 'Nơi sinh sống' },
+      { hz: '住在', py: 'zhù zài', vi: 'sống ở', tag: 'Nơi sinh sống' },
+      { hz: '越南', py: 'Yuènán', vi: 'Việt Nam', tag: 'Nơi sinh sống' },
+      { hz: '胡志明市', py: 'Húzhìmíng shì', vi: 'Thành phố Hồ Chí Minh', tag: 'Nơi sinh sống' },
+      { hz: '河内', py: 'Hénèi', vi: 'Hà Nội', tag: 'Nơi sinh sống' },
+      { hz: '中国', py: 'Zhōngguó', vi: 'Trung Quốc', tag: 'Nơi sinh sống' },
+      { hz: '北京', py: 'Běijīng', vi: 'Bắc Kinh', tag: 'Nơi sinh sống' },
+      { hz: '上海', py: 'Shànghǎi', vi: 'Thượng Hải', tag: 'Nơi sinh sống' },
+
+      /* --- Số điện thoại ---------------------------------------------- */
+      { hz: '电话', py: 'diànhuà', vi: 'điện thoại', tag: 'Số điện thoại' },
+      { hz: '电话号', py: 'diànhuà hào', vi: 'số điện thoại (bàn)', tag: 'Số điện thoại' },
+      { hz: '手机', py: 'shǒujī', vi: 'điện thoại di động', tag: 'Số điện thoại' },
+      { hz: '手机号', py: 'shǒujī hào', vi: 'số điện thoại di động', tag: 'Số điện thoại' },
+      { hz: '多少', py: 'duōshao', vi: 'bao nhiêu', tag: 'Số điện thoại' },
+      { hz: '是', py: 'shì', vi: 'là', tag: 'Số điện thoại' },
+      { hz: '爸爸', py: 'bàba', vi: 'bố, ba', tag: 'Số điện thoại' },
+      { hz: '妈妈', py: 'māma', vi: 'mẹ, má', tag: 'Số điện thoại' },
+      { hz: '你的手机号', py: 'nǐ de shǒujī hào', vi: 'số điện thoại của bạn', tag: 'Số điện thoại' },
+      { hz: '我的手机号', py: 'wǒ de shǒujī hào', vi: 'số điện thoại của tôi', tag: 'Số điện thoại' },
+      { hz: '老师的手机号', py: 'lǎoshī de shǒujī hào', vi: 'số điện thoại của thầy/cô', tag: 'Số điện thoại' },
+      { hz: '爸爸的手机号', py: 'bàba de shǒujī hào', vi: 'số điện thoại của bố', tag: 'Số điện thoại' },
+      { hz: '妈妈的手机号', py: 'māma de shǒujī hào', vi: 'số điện thoại của mẹ', tag: 'Số điện thoại' },
     ],
 
     /* --- Mẫu câu: dùng cho game "Sắp xếp câu" và "Nghe hiểu" --------- */
@@ -103,6 +129,12 @@ export const LESSONS = [
       { hz: '我二零一五年出生。', py: 'Wǒ èr líng yī wǔ nián chūshēng.', vi: 'Tôi sinh năm 2015.' },
       { hz: '明天是我的生日。', py: 'Míngtiān shì wǒ de shēngrì.', vi: 'Ngày mai là sinh nhật của tôi.' },
       { hz: '你们好！', py: 'Nǐmen hǎo!', vi: 'Chào các bạn!' },
+      { hz: '我的生日八月九号。', py: 'Wǒ de shēngrì bāyuè jiǔ hào.', vi: 'Sinh nhật của tôi ngày 9 tháng 8.' },
+      { hz: '我今年十一岁。', py: 'Wǒ jīnnián shíyī suì.', vi: 'Năm nay tôi mười một tuổi.' },
+      { hz: '我住在胡志明市。', py: 'Wǒ zhù zài Húzhìmíng shì.', vi: 'Tôi sống ở Thành phố Hồ Chí Minh.' },
+      { hz: '我住在越南。', py: 'Wǒ zhù zài Yuènán.', vi: 'Tôi sống ở Việt Nam.' },
+      { hz: '爸爸的手机号是多少？', py: 'Bàba de shǒujī hào shì duōshao?', vi: 'Số điện thoại của bố là bao nhiêu?' },
+      { hz: '你的手机号是多少？', py: 'Nǐ de shǒujī hào shì duōshao?', vi: 'Số điện thoại của bạn là bao nhiêu?' },
     ],
   },
 ];

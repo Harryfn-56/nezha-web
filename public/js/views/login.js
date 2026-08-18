@@ -89,37 +89,51 @@ export function view() {
   }
 
   function drawTeacher() {
+    const acc = el('input.input.input-lg', {
+      placeholder: 'Ví dụ: colan  (quản trị: admin)',
+      autocapitalize: 'none',
+      autocomplete: 'username',
+      style: { textTransform: 'lowercase' },
+      value: localStorage.getItem('nz_lastteacher') || '',
+    });
     const pw = el('input.input.input-lg', {
       type: 'password',
-      placeholder: 'Mật khẩu giáo viên',
+      placeholder: 'Mật khẩu',
       autocomplete: 'current-password',
     });
     const btn = el('button.btn.btn-lg.btn-block.btn-dark', {}, '🔑 Vào trang quản trị');
 
-    function submit() {
+    async function submit() {
       setErr('');
+      btn.disabled = true;
       try {
-        loginTeacher(pw.value);
+        await loginTeacher(acc.value, pw.value);
+        localStorage.setItem('nz_lastteacher', acc.value.trim().toLowerCase());
         sfx.win();
         go('/quan-tri');
       } catch (e) {
         setErr(e.message);
         pw.value = '';
         pw.focus();
+      } finally {
+        btn.disabled = false;
       }
     }
     btn.onclick = submit;
-    pw.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+    [acc, pw].forEach((i) => i.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submit();
+    }));
 
     body.replaceChildren(
       seg(),
       err,
+      el('label.field', {}, [el('span', {}, 'Tài khoản'), acc]),
       el('label.field', {}, [el('span', {}, 'Mật khẩu'), pw]),
       btn,
       el('div.hint.tcenter', { style: { marginTop: '14px' } },
-        'Mật khẩu được đặt trong file config.js'),
+        'Quản trị viên đăng nhập bằng tài khoản trong config.js, các giáo viên khác dùng tài khoản do quản trị viên cấp.'),
     );
-    setTimeout(() => pw.focus(), 80);
+    setTimeout(() => (acc.value ? pw : acc).focus(), 80);
   }
 
   function seg() {

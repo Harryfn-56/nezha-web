@@ -10,6 +10,18 @@ create table if not exists public.classes (
   created_at  timestamptz not null default now()
 );
 
+-- ---------------------------------------------------------- GIÁO VIÊN
+-- Tài khoản đăng nhập của từng giáo viên, do quản trị viên tạo trong
+-- trang Quản trị → thẻ "Giáo viên". Cột classes là danh sách mã lớp mà
+-- giáo viên đó được xem điểm, ví dụ: ["TN1101","TH2001"]
+create table if not exists public.teachers (
+  username    text primary key,
+  name        text not null default '',
+  password    text not null default '',
+  classes     jsonb not null default '[]'::jsonb,
+  created_at  timestamptz not null default now()
+);
+
 -- ----------------------------------------------------------- HỌC SINH
 create table if not exists public.students (
   id          text primary key,           -- dạng "TN1101::nguyễn minh an"
@@ -78,6 +90,7 @@ create index if not exists room_players_pin_idx on public.room_players (pin, sco
 -- =====================================================================
 
 alter table public.classes      enable row level security;
+alter table public.teachers     enable row level security;
 alter table public.students     enable row level security;
 alter table public.scores       enable row level security;
 alter table public.lessons      enable row level security;
@@ -87,7 +100,7 @@ alter table public.room_players enable row level security;
 do $$
 declare t text;
 begin
-  foreach t in array array['classes','students','scores','lessons','rooms','room_players']
+  foreach t in array array['classes','teachers','students','scores','lessons','rooms','room_players']
   loop
     execute format('drop policy if exists "nezha_all" on public.%I', t);
     execute format(
