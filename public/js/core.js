@@ -3,6 +3,13 @@
  * Không phụ thuộc thư viện ngoài.
  */
 
+/**
+ * Chuỗi "?v=..." của bản build đang chạy (rỗng khi chạy `npm run dev`).
+ * Dùng khi nạp động file trò chơi để trình duyệt học sinh không dùng lại
+ * bản cũ trong bộ nhớ đệm sau khi thầy/cô cập nhật website.
+ */
+export const BUILD_Q = new URL(import.meta.url).search;
+
 /* ------------------------------------------------------------ DOM */
 
 /**

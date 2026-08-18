@@ -141,6 +141,24 @@ for (const rel of files) {
 
 // Cache busting cho index.html
 const version = shortHash(hashParts.join('\n'));
+
+/*
+ * Cache busting cho CẢ các module con.
+ * index.html chỉ gắn ?v= cho main.js; các file mà main.js `import` lại không có,
+ * nên trình duyệt học sinh có thể dùng bản cũ trong bộ nhớ đệm sau khi thầy/cô
+ * cập nhật website. Ở đây gắn ?v= vào mọi đường dẫn import trong file .js.
+ */
+for (const rel of walk(OUT)) {
+  if (path.extname(rel).toLowerCase() !== '.js') continue;
+  const file = path.join(OUT, rel);
+  const code = fs.readFileSync(file, 'utf8');
+  const patched = code.replace(
+    /(\bfrom\s*['"])(\.{1,2}\/[^'"?]+\.js)(['"])/g,
+    (_, a, spec, c) => `${a}${spec}?v=${version}${c}`
+  );
+  if (patched !== code) fs.writeFileSync(file, patched);
+}
+
 const indexPath = path.join(OUT, 'index.html');
 let html = fs.readFileSync(indexPath, 'utf8');
 html = html

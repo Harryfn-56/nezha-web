@@ -2,7 +2,7 @@
  * ĐIỂM KHỞI ĐỘNG — khai báo các đường dẫn của website.
  */
 
-import { route, setNotFound, render, go, mount, el, toast } from './core.js';
+import { route, setNotFound, render, go, mount, el, toast, BUILD_Q } from './core.js';
 import { getGame } from './data.js';
 import { currentUser, getLessonById } from './store.js';
 import { page } from './views/layout.js';
@@ -27,7 +27,7 @@ async function playView({ lessonId, gameId }) {
   if (!game) return go('/hoc', true);
   // Chỉ cho phép chữ thường, số và dấu gạch ngang để tránh nạp nhầm file
   const safeId = String(gameId).replace(/[^a-z0-9-]/gi, '');
-  const loader = () => import(`./games/${safeId}.js`);
+  const loader = () => import(`./games/${safeId}.js${BUILD_Q}`);
 
   const lesson = await getLessonById(lessonId);
   if (!lesson || !lesson.words || lesson.words.length < 4) {
