@@ -618,6 +618,44 @@ table.tbl tbody tr:hover { background: var(--cream); }
 .num-cell .hz { font-size: 1.5rem; font-weight: 800; color: var(--red-700); line-height: 1.25; }
 .num-cell .py { font-size: .74rem; color: var(--orange-600); font-style: italic; }
 
+.codebox {
+  background: #2B1A16; color: #FFE9C7; border-radius: 12px; padding: 12px 14px;
+  font: 500 .82rem/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-x: auto; white-space: pre; margin-top: 8px; user-select: all;
+}
+
+.tbl tr.me-row { background: var(--gold-100, #FFF3D6); }
+.tbl tr.me-row td { font-weight: 800; }
+
+/* --- Tập viết chữ Hán ------------------------------------------------ */
+.write-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+.write-col { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.write-cap { font-size: .82rem; font-weight: 700; color: var(--ink-3); text-align: center; }
+.writer-pad {
+  min-width: 168px; min-height: 168px;
+  background: #fff; border: 2px dashed var(--line); border-radius: 16px;
+  display: grid; place-items: center; padding: 6px; cursor: pointer;
+  background-image: linear-gradient(var(--line-2) 1px, transparent 1px),
+                    linear-gradient(90deg, var(--line-2) 1px, transparent 1px);
+  background-size: 50% 50%; background-position: center;
+}
+.writer-pad.quiz { border-style: solid; border-color: var(--ok, #0F7B3E); cursor: crosshair; touch-action: none; }
+.write-status {
+  text-align: center; font-weight: 800; margin: 6px 0; min-height: 26px;
+  color: var(--ink-2, #6B4A3F);
+}
+.write-status.ok { color: var(--ok, #0F7B3E); }
+.write-status.bad { color: var(--bad, #C62828); }
+.try-dot {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--line); display: inline-block; background: #fff;
+}
+.try-dot.on { background: var(--ok, #0F7B3E); border-color: var(--ok, #0F7B3E); }
+
+@media (max-width: 560px) {
+  .write-grid { grid-template-columns: 1fr; }
+}
+
 /* In ấn: giáo viên có thể in bảng điểm */
 @media print {
   .nav, .g-top, .btn, .foot { display: none !important; }

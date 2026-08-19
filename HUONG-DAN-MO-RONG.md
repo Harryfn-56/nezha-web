@@ -205,6 +205,35 @@ Nhờ vậy các bạn trả lời sau không nhìn được đáp án của b�
 > đã bật Supabase (thẻ **☁️ Kết nối**). Chưa bật Supabase thì tài khoản chỉ
 > nằm trên chính máy đã tạo.
 
+### Bật Supabase — 2 phần, phải làm ĐỦ CẢ HAI
+
+Rất nhiều người làm xong phần 1 rồi tưởng đã xong, nhưng website vẫn báo
+"đang ở chế độ ngoại tuyến". Lý do: tạo bảng chỉ là dựng kho chứa, website
+còn phải biết **địa chỉ kho** và **chìa khoá** thì mới gửi dữ liệu vào được.
+
+**Phần 1 — Tạo bảng (làm 1 lần)**
+Supabase → **SQL Editor** → dán toàn bộ `supabase/schema.sql` → **Run**.
+Xong thấy các bảng `classes`, `teachers`, `students`, `scores`, `lessons`,
+`rooms`, `room_players` trong mục Table Editor.
+
+**Phần 2 — Nối website với Supabase**
+Supabase → **Project Settings → API** → chép 2 giá trị:
+
+- **Project URL** (dạng `https://abcxyz.supabase.co`)
+- **anon public key** (chuỗi dài bắt đầu bằng `eyJ...`)
+
+Rồi dán vào **Quản trị → ☁️ Kết nối** → **Lưu & kiểm tra kết nối**.
+Trang sẽ tải lại; nếu hiện "✅ Đã kết nối máy chủ" là thành công.
+
+> Cách nhập trên web chỉ có tác dụng **trên chính máy vừa nhập** — dùng để thử
+> nhanh. Để cả trung tâm (máy học sinh, máy giáo viên khác) đều kết nối, chép
+> đoạn code mà thẻ Kết nối hiện ra vào `public/js/config.js` (thay cho phần
+> `supabase` đang có) rồi `git push`.
+
+**"anon public key" có bị lộ không?** Không sao. Đây là khoá công khai, Supabase
+thiết kế để nhúng thẳng vào website tĩnh; quyền truy cập được kiểm soát bằng
+Row Level Security trong `schema.sql`. Tuyệt đối **không** dùng `service_role key`.
+
 ### Đổi mật khẩu quản trị
 
 Mở `public/js/config.js`, sửa 2 dòng:
@@ -345,6 +374,8 @@ File `_mau-tro-choi.js` và tài liệu này chính là để phiên Claude sau 
 | Số câu mỗi lượt, thời gian trả lời, số mạng | `public/js/config.js` → `game` |
 | Chủ đề thẻ lật (bài chưa chia nhóm cắt mấy từ 1 phần) | `public/js/config.js` → `game.flashcardChunk` |
 | Tốc độ rơi & mức tăng khó của Na Tra đại chiến | `public/js/config.js` → `game.rushStartSeconds`, `rushLevelEvery`, `rushSpeedUp`, `rushMinSeconds` |
+| Số chữ mỗi lượt của trò Tập viết | `public/js/config.js` → `game.writeChars` |
+| Bảng xếp hạng lớp trên trang học sinh | `public/js/views/home.js` |
 | Kết nối Supabase | `public/js/config.js` → `supabase` |
 | Từ vựng, mẫu câu, danh sách trò chơi | `public/js/data.js` |
 | Từ điển tự tra khi upload file | `public/js/dict.js` |
@@ -425,3 +456,40 @@ gốc tên miền). Ngoài ra điều khoản của GitHub Pages không cho phé
 Không sao cả — Hostinger vẫn chạy tốt và anh đã có sẵn cấu hình `.htaccess`.
 Có thể dùng **cả hai**: Cloudflare Pages làm bản chính (nhanh, tự cập nhật),
 Hostinger làm bản dự phòng.
+
+---
+
+# F. Hai chức năng mới (bản 1.2)
+
+## Trò "Tập viết chữ Hán" ✍️
+
+Màn hình chia đôi: bên trái là **chữ mẫu** (bấm vào để máy viết lại đúng thứ tự
+nét), bên phải là **ô để học sinh viết** bằng chuột hoặc ngón tay.
+
+Luật tính điểm:
+
+- Mỗi chữ phải viết **đúng thứ tự nét 2 lần**
+- Lần nào sai nét thì lần đó **không được tính**, phải viết lại từ đầu
+- Sai quá 3 nét ở một lần thì máy tự hiện gợi ý nét tiếp theo
+- Viết 6 lần vẫn chưa đạt thì tự chuyển sang chữ khác, chữ đó vào mục "Cần ôn lại"
+
+Chữ để luyện được **tách ra từ chính từ vựng của bài** (ví dụ 生日 → luyện 生 rồi
+日), mỗi lượt 8 chữ — đổi số này ở `config.js` → `game.writeChars`.
+
+> ⚠️ **Trò này cần mạng.** Dữ liệu thứ tự nét của từng chữ được tải từ thư viện
+> mã nguồn mở Hanzi Writer (địa chỉ trong `config.js` → `game.hanziWriterCdn`).
+> Nếu mạng lớp học chặn, trò sẽ hiện thông báo hướng dẫn chứ không treo. Các trò
+> còn lại không cần mạng ngoài.
+
+## Bảng xếp hạng lớp cho học sinh 🏆
+
+Ngay trên trang chính của học sinh, dưới phần chọn trò chơi:
+
+- **Top 5** của lớp, xếp theo tổng điểm cộng dồn tất cả các bài
+- Dòng của chính em được **tô vàng** và ghi thêm chữ "(em)"
+- Nếu em chưa lọt top 5 thì vẫn có một dòng riêng hiện đúng thứ hạng của em
+- Bên dưới có chip **"Em đang xếp thứ 3/12 trong lớp"** và **"Còn N điểm nữa là
+  vượt bạn phía trên"** để tạo động lực
+
+> Bảng chỉ hiện đủ cả lớp khi đã bật Supabase. Chưa bật thì mỗi máy chỉ thấy dữ
+> liệu của chính máy đó.

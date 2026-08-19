@@ -84,8 +84,33 @@ export const CONFIG = {
     rushLevelEvery: 6,          // bao nhiêu câu thì tăng tốc 1 lần
     rushSpeedUp: 0.82,          // mỗi cấp còn 82% thời gian của cấp trước
     rushMinSeconds: 1.4,        // nhanh nhất (giây)
+
+    /* --- Tập viết chữ Hán ------------------------------------------
+     * writeChars: mỗi lượt luyện bao nhiêu chữ
+     * hanziWriterCdn: thư viện nhận diện nét (mã nguồn mở, MIT).
+     *   Trò này cần mạng để tải dữ liệu thứ tự nét của từng chữ.     */
+    writeChars: 8,
+    hanziWriterCdn: 'https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js',
   },
 };
+
+/* ----------------------------------------------------------------------
+ * Cho phép nhập Supabase ngay trên web (Quản trị → ☁️ Kết nối) để thử ngay
+ * mà chưa cần sửa file này. Lưu ý: cách đó chỉ có tác dụng trên CHÍNH máy
+ * đã nhập. Muốn cả trung tâm dùng chung thì vẫn phải điền vào 2 dòng
+ * `url` và `anonKey` ở trên rồi build lại.
+ * -------------------------------------------------------------------- */
+export const SUPABASE_LS_KEY = 'nz_supabase';
+
+try {
+  if (typeof localStorage !== 'undefined' && !CONFIG.supabase.url) {
+    const saved = JSON.parse(localStorage.getItem(SUPABASE_LS_KEY) || 'null');
+    if (saved && saved.url && saved.anonKey) {
+      CONFIG.supabase = { url: saved.url, anonKey: saved.anonKey };
+      CONFIG.supabaseFromBrowser = true;
+    }
+  }
+} catch { /* bỏ qua */ }
 
 /** Supabase đã được cấu hình chưa? */
 export function hasCloud() {

@@ -360,6 +360,40 @@ export async function allScores({ classCode = '', limit = 1000 } = {}) {
   return rows;
 }
 
+/**
+ * Bảng xếp hạng của một lớp — dùng cho trang chính của học sinh.
+ * Xếp theo TỔNG ĐIỂM cộng dồn của tất cả các bài.
+ * @returns {{board: Array, me: object|null, myRank: number, totalStudents: number}}
+ */
+export async function classLeaderboard(classCode, top = 5) {
+  const code = String(classCode || '').toUpperCase();
+  let rows = [];
+
+  if (CLOUD) {
+    try {
+      rows = await sb('scores', {
+        query: `?select=student_id,student_name,class_code,score,correct_count,total_count,game_id,played_at`
+             + `&class_code=eq.${encodeURIComponent(code)}&order=played_at.desc&limit=5000`,
+      }) || [];
+    } catch (e) { console.warn('classLeaderboard:', e.message); }
+  } else {
+    rows = read(LS.scores, []).filter((s) => String(s.class_code).toUpperCase() === code);
+  }
+
+  const all = summarise(rows);            // đã sắp xếp giảm dần theo tổng điểm
+  const user = currentUser();
+  const myIdx = user
+    ? all.findIndex((s) => s.id === user.id || s.name === user.name)
+    : -1;
+
+  return {
+    board: all.slice(0, top),
+    me: myIdx >= 0 ? all[myIdx] : null,
+    myRank: myIdx >= 0 ? myIdx + 1 : 0,
+    totalStudents: all.length,
+  };
+}
+
 /** Gom điểm theo học sinh để làm bảng tổng hợp cho giáo viên */
 export function summarise(rows) {
   const map = new Map();
@@ -367,7 +401,7 @@ export function summarise(rows) {
     const key = r.student_id || r.student_name;
     if (!map.has(key)) {
       map.set(key, {
-        name: r.student_name, classCode: r.class_code,
+        id: key, name: r.student_name, classCode: r.class_code,
         plays: 0, totalScore: 0, correct: 0, total: 0, last: 0, games: new Set(),
       });
     }

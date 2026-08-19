@@ -5,6 +5,7 @@
 
 import { el, mount, go, toast, fmtDate, clear } from '../core.js';
 import { GAMES } from '../data.js';
+import { CONFIG } from '../config.js';
 import {
   currentUser, allScores, summarise, listClasses, addClass, removeClass,
   listLessons, saveLesson, deleteLesson, pingCloud, CLOUD,
@@ -614,23 +615,76 @@ async function renderCloud(host) {
     ])
   );
 
+  /* --- Ô nhập Supabase ngay trên web ------------------------------- */
+  const urlIn = el('input.input', {
+    placeholder: 'https://abcxyz.supabase.co',
+    value: CONFIG.supabase.url || '',
+  });
+  const keyIn = el('input.input', {
+    placeholder: 'anon public key (chuỗi dài bắt đầu bằng eyJ...)',
+    value: CONFIG.supabase.anonKey || '',
+  });
+  const codeBox = el('pre.codebox', {}, '');
+
+  function refreshCode() {
+    codeBox.textContent =
+      `  supabase: {\n    url: '${urlIn.value.trim()}',\n    anonKey: '${keyIn.value.trim()}',\n  },`;
+  }
+  urlIn.oninput = refreshCode;
+  keyIn.oninput = refreshCode;
+  refreshCode();
+
   host.append(
     el('div.card', { style: { marginTop: '16px' } }, [
-      el('h3', {}, r.ok ? '🎉 Mọi thứ đã sẵn sàng' : '🔧 Cách bật lưu điểm tập trung (miễn phí, ~5 phút)'),
+      el('h3', {}, r.ok ? '🎉 Mọi thứ đã sẵn sàng' : '🔧 Bật lưu điểm tập trung (miễn phí, ~5 phút)'),
+
       r.ok
         ? el('p', {}, 'Điểm của học sinh ở mọi thiết bị đều được lưu về đây, và phòng Kahoot chơi được nhiều máy cùng lúc.')
         : el('div', {}, [
-            el('p', {}, 'Hiện tại website vẫn chơi được đủ 8 trò chơi, nhưng điểm chỉ lưu trên máy của từng học sinh và phòng Kahoot chỉ chạy trên 1 máy. Để xem điểm cả lớp và chơi Kahoot nhiều máy:'),
+            el('p', {}, 'Chỉ tạo bảng trong Supabase thôi là CHƯA đủ — website còn cần biết địa chỉ và khoá của Supabase thì mới kết nối được. Làm theo 3 bước:'),
             el('ol', {}, [
-              el('li', {}, 'Vào supabase.com → đăng ký miễn phí → tạo project mới'),
-              el('li', {}, 'Mở SQL Editor → dán toàn bộ nội dung file supabase/schema.sql → bấm Run'),
-              el('li', {}, 'Vào Project Settings → API, chép "Project URL" và "anon public key"'),
-              el('li', {}, 'Dán 2 giá trị đó vào file public/js/config.js'),
-              el('li', {}, 'Chạy npm run build rồi tải lại thư mục dist/ lên Hostinger'),
+              el('li', {}, 'Supabase → SQL Editor → dán file supabase/schema.sql → Run (bước này thầy/cô đã làm nếu đã thấy bảng teachers)'),
+              el('li', {}, 'Supabase → Project Settings → API → chép "Project URL" và "anon public key"'),
+              el('li', {}, 'Dán 2 giá trị đó vào 2 ô ngay bên dưới'),
             ]),
           ]),
+
+      el('div.row.wrapf', {}, [
+        el('label.field.grow', { style: { minWidth: '260px' } }, [el('span', {}, 'Project URL'), urlIn]),
+      ]),
+      el('label.field', {}, [el('span', {}, 'anon public key'), keyIn]),
+
+      el('div.row.wrapf', {}, [
+        el('button.btn', {
+          onclick: async () => {
+            const url = urlIn.value.trim().replace(/\/$/, '');
+            const key = keyIn.value.trim();
+            if (!url || !key) return toast('Cần điền cả 2 ô', 'bad');
+            localStorage.setItem('nz_supabase', JSON.stringify({ url, anonKey: key }));
+            toast('Đã lưu — đang tải lại để kết nối...', 'ok');
+            setTimeout(() => location.reload(), 700);
+          },
+        }, '💾 Lưu & kiểm tra kết nối'),
+        CONFIG.supabaseFromBrowser ? el('button.btn.btn-ghost', {
+          onclick: () => {
+            localStorage.removeItem('nz_supabase');
+            toast('Đã xoá cấu hình trên máy này');
+            setTimeout(() => location.reload(), 700);
+          },
+        }, 'Xoá cấu hình trên máy này') : null,
+      ]),
+
+      CONFIG.supabaseFromBrowser ? el('div.alert', { style: { marginTop: '12px' } }, [
+        el('div.bold', {}, '⚠️ Mới chỉ chạy trên máy này'),
+        el('div.small', {}, 'Thầy/cô đang dùng cấu hình lưu tạm trong trình duyệt của máy này. Máy của học sinh và của giáo viên khác vẫn chưa kết nối. Để cả trung tâm dùng chung, hãy chép đoạn dưới đây vào file public/js/config.js (thay cho phần supabase đang có), rồi git push để website tự cập nhật:'),
+        codeBox,
+      ]) : el('div', { style: { marginTop: '12px' } }, [
+        el('div.small.muted', {}, 'Đoạn cần dán vào public/js/config.js (thay cho phần supabase đang có), sau đó git push:'),
+        codeBox,
+      ]),
+
       el('div.alert.alert-info', { style: { marginTop: '12px' } },
-        '💡 Đừng quên đổi mật khẩu giáo viên trong config.js trước khi đưa website cho học sinh dùng.'),
+        '💡 "anon public key" là khoá công khai, được thiết kế để nhúng thẳng vào website tĩnh — dán vào config.js là đúng cách. Tuyệt đối KHÔNG dùng "service_role key".'),
     ])
   );
 }

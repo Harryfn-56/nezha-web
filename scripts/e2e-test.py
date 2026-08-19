@@ -34,7 +34,7 @@ with sync_playwright() as p:
 
     cards = page.query_selector_all(".game-card")
     print(f"✅ Có {len(cards)} thẻ trò chơi")
-    assert len(cards) == 8, f"Cần 8 game, thấy {len(cards)}"
+    assert len(cards) == 9, f"Cần 9 game, thấy {len(cards)}"
 
     # ---------------------------------------------------- 2. Từng game
     games = [
@@ -105,6 +105,88 @@ with sync_playwright() as p:
         print(f"✅ Na Tra đại chiến tăng tốc theo cấp: {' → '.join(speeds)}")
     snap(page, "10b-rush-level", full=True)
 
+    # ------------------------------- 2c-bis. Tập viết chữ Hán
+    # Thư viện nét chữ nạp từ CDN nên môi trường test không tải được:
+    # thay bằng một bản giả để kiểm tra đúng phần luật chơi của mình.
+    STUB = """
+    window.HanziWriter = {
+      create: function (node, ch, opts) {
+        node.textContent = ch;
+        return {
+          animateCharacter: function () { window.__animated = (window.__animated || 0) + 1; },
+          quiz: function (cfg) { window.__quiz = cfg; },
+        };
+      }
+    };
+    """
+    wctx = b.new_context(viewport={"width": 1280, "height": 900})
+    wpg = wctx.new_page()
+    wpg.add_init_script(STUB)
+    wpg.goto(BASE, wait_until="networkidle"); time.sleep(0.8)
+    wpg.fill("input[placeholder*='Nguyễn']", "Trò Viết")
+    wpg.fill("input[placeholder*='TH2001']", "TN1101")
+    wpg.click("button:has-text('Bắt đầu học')")
+    wpg.wait_for_url("**/hoc", timeout=8000); time.sleep(1)
+    n_games = len(wpg.query_selector_all(".game-card"))
+    if n_games != 9:
+        errors.append(f"trang chính: cần 9 trò chơi, thấy {n_games}")
+    else:
+        print("✅ Trang chính có 9 trò chơi (thêm Tập viết)")
+
+    wpg.goto(f"{BASE}/choi/tn1101-1-5/viet", wait_until="networkidle")
+    time.sleep(1.5)
+    snap(wpg, "09b-viet", full=True)
+    if not wpg.query_selector(".writer-pad"):
+        errors.append("viet: không dựng được khung tập viết")
+    else:
+        print("✅ Tập viết: dựng được 2 ô (chữ mẫu + ô viết)")
+
+    def counter(pg):
+        t = pg.inner_text(".lbl")
+        return t.split("·")[0].strip()
+
+    first = counter(wpg)
+    # Lần 1 sạch lỗi → vẫn ở chữ cũ
+    wpg.evaluate("() => window.__quiz.onComplete()")
+    time.sleep(1.6)
+    still = counter(wpg)
+    # Lần 2 sạch lỗi → sang chữ mới
+    wpg.evaluate("() => window.__quiz.onComplete()")
+    time.sleep(1.8)
+    moved = counter(wpg)
+    if still != first:
+        errors.append("viet: mới viết đúng 1 lần đã chuyển chữ")
+    elif moved == first:
+        errors.append("viet: viết đúng 2 lần vẫn không chuyển chữ")
+    else:
+        print(f"✅ Tập viết: phải đúng 2 lần mới sang chữ khác ({first} → {moved})")
+
+    # Sai nét thì lần đó không được tính
+    wpg.evaluate("() => { window.__quiz.onMistake(); window.__quiz.onComplete(); }")
+    time.sleep(1.6)
+    wpg.evaluate("() => window.__quiz.onComplete()")
+    time.sleep(1.6)
+    after_bad = counter(wpg)
+    if after_bad != moved:
+        errors.append("viet: lần viết có nét sai vẫn được tính là đạt")
+    else:
+        print("✅ Tập viết: lần nào sai nét thì lần đó không được tính")
+    snap(wpg, "09c-viet-progress", full=True)
+
+    # Không tải được thư viện thì báo lỗi tử tế
+    fpg = wctx.new_page()
+    fpg.route("**/hanzi-writer*", lambda r: r.abort())
+    fpg.add_init_script("window.HanziWriter = undefined;")
+    fpg.goto(f"{BASE}/choi/tn1101-1-5/viet", wait_until="networkidle")
+    time.sleep(2.5)
+    if "Không tải được bộ nét chữ" not in fpg.content():
+        errors.append("viet: mất mạng nhưng không hiện thông báo hướng dẫn")
+    else:
+        print("✅ Tập viết: mất mạng thì báo lỗi rõ ràng, không treo")
+    snap(fpg, "09d-viet-offline", full=True)
+    fpg.close()
+    wctx.close()
+
     # ------------------------------- 2d. Bảng số 1–99
     page.goto(f"{BASE}/bang-so", wait_until="networkidle")
     time.sleep(1.0)
@@ -130,6 +212,19 @@ with sync_playwright() as p:
         errors.append("quiz: không ra màn hình kết quả")
     else:
         print("✅ Chơi hết 1 lượt trắc nghiệm → có màn hình kết quả")
+
+    # ------------------------------------ 3b. Bảng xếp hạng lớp cho học sinh
+    page.goto(BASE + "/hoc", wait_until="networkidle")
+    time.sleep(2.0)
+    snap(page, "13b-bang-xep-hang", full=True)
+    body = page.content()
+    if "Bảng xếp hạng lớp" not in body:
+        errors.append("xếp hạng: không thấy mục bảng xếp hạng lớp")
+    elif "đang xếp thứ" not in body:
+        errors.append("xếp hạng: không hiện thứ hạng của chính học sinh")
+    else:
+        rows = len(page.query_selector_all("tr.me-row"))
+        print(f"✅ Bảng xếp hạng lớp hiện đúng, có tô đậm dòng của em ({rows} dòng)")
 
     # ------------------------------------ 4. Ghép cặp: bấm thử vài ô
     page.goto(f"{BASE}/choi/tn1101-1-5/match", wait_until="networkidle")
@@ -273,16 +368,21 @@ with sync_playwright() as p:
     else:
         errors.append("live: không tạo được PIN")
 
-    # Học sinh vào phòng bằng 1 tab khác (dùng chung localStorage của phòng)
-    stu = ctx.new_page()
-    stu.goto(BASE + "/vao-phong", wait_until="networkidle")
-    time.sleep(1.0)
-    stu.fill("input[placeholder='000000']", pin)
-    stu.fill("input[placeholder*='Họ tên']", "Trò Thử")
-    stu.click("button:has-text('Vào phòng')")
-    time.sleep(1.5)
-    if "Đã vào phòng" not in stu.content():
-        errors.append("live: học sinh không vào được phòng")
+    # HAI học sinh vào phòng bằng 2 tab khác (dùng chung localStorage của phòng)
+    def join_room(nick):
+        pg = ctx.new_page()
+        pg.goto(BASE + "/vao-phong", wait_until="networkidle")
+        time.sleep(0.9)
+        pg.fill("input[placeholder='000000']", pin)
+        pg.fill("input[placeholder*='Họ tên']", nick)
+        pg.click("button:has-text('Vào phòng')")
+        time.sleep(1.3)
+        if "Đã vào phòng" not in pg.content():
+            errors.append(f"live: {nick} không vào được phòng")
+        return pg
+
+    stu = join_room("Tro Thu Mot")
+    stu2 = join_room("Tro Thu Hai")
 
     page.click("button:has-text('Bắt đầu chơi')")
     time.sleep(2)
@@ -292,20 +392,24 @@ with sync_playwright() as p:
     else:
         errors.append("live: không hiện câu hỏi")
 
-    # -------- 8b. Học sinh chọn xong CHƯA được biết đúng/sai
+    # -------- 8b. Bạn trả lời trước KHÔNG được biết đúng/sai khi bạn kia chưa xong
     stu.wait_for_selector(".k-opt", timeout=8000)
+    stu2.wait_for_selector(".k-opt", timeout=8000)
     time.sleep(0.5)
     stu.query_selector_all(".k-opt")[0].click()
-    time.sleep(0.8)
+    time.sleep(3.5)                      # đủ lâu để chắc chắn không phải do chậm
     after_pick = stu.content()
     snap(stu, "21b-student-waiting", full=True)
     leaked = ("Chính xác!" in after_pick) or ("Chưa đúng rồi" in after_pick) or ("Đáp án đúng" in after_pick)
     if leaked:
-        errors.append("live: học sinh thấy đáp án ngay khi vừa chọn (chưa công bố)")
+        errors.append("live: bạn trả lời trước đã thấy đáp án dù bạn kia chưa trả lời")
     elif "Đã ghi nhận" not in after_pick:
         errors.append("live: không hiện màn chờ sau khi học sinh chọn")
     else:
-        print("✅ Học sinh chọn xong chỉ thấy 'Đã ghi nhận', chưa biết đúng/sai")
+        print("✅ Bạn trả lời trước phải chờ, chưa biết đúng/sai")
+
+    # Bạn thứ hai trả lời → lúc này cả lớp đã xong
+    stu2.query_selector_all(".k-opt")[0].click()
 
     # -------- 8c. Cả lớp trả lời xong → thầy/cô công bố → học sinh mới thấy đáp án
     for _ in range(14):
@@ -319,7 +423,7 @@ with sync_playwright() as p:
     else:
         print("✅ Cả lớp trả lời xong → công bố đáp án cho học sinh")
     snap(page, "21d-host-reveal", full=True)
-    stu.close()
+    stu.close(); stu2.close()
 
     # ---------------------------------------------------- 9. Mobile
     m = b.new_page(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)

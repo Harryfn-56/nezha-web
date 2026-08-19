@@ -244,6 +244,15 @@ export const GAMES = [
     skill: 'Vận dụng',
   },
   {
+    id: 'viet',
+    name: 'Tập viết chữ Hán',
+    cn: '写汉字',
+    desc: 'Xem thứ tự nét rồi tự viết lại — phải viết đúng nét 2 lần mới được điểm',
+    icon: '✍️',
+    color: 'blue',
+    skill: 'Viết chữ',
+  },
+  {
     id: 'rush',
     name: 'Na Tra đại chiến',
     cn: '闯关',

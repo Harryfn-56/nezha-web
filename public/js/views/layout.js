@@ -55,7 +55,7 @@ export function footer() {
     el('img', { src: '/assets/logo-trong-suot.png', alt: '' }),
     el('div', {}, `${CONFIG.siteName} · ${CONFIG.siteTagline}`),
     el('div.tiny', { style: { marginTop: '4px' } },
-      CLOUD ? '☁️ Đã kết nối máy chủ — điểm được lưu tập trung'
+      CLOUD ? '☁️ Có máy chủ Supabase — điểm được lưu tập trung'
             : '💾 Chế độ ngoại tuyến — điểm lưu trên máy này'),
   ]);
 }

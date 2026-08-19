@@ -4,7 +4,7 @@
 
 import { el, mount, go, fmtDate } from '../core.js';
 import { GAMES } from '../data.js';
-import { currentUser, myScores, listLessons } from '../store.js';
+import { currentUser, myScores, listLessons, classLeaderboard, CLOUD } from '../store.js';
 import { page } from './layout.js';
 
 const LESSON_KEY = 'nz_lesson';
@@ -43,6 +43,74 @@ export async function view() {
     value: l.id,
     selected: l.id === lesson.id ? true : null,
   }, `${l.emoji || '📘'}  ${l.title}${l.code ? ' · ' + l.code : ''}`)));
+
+  /* ------------------------------------------- bảng xếp hạng của lớp */
+  const rankBody = el('div.card.center', { style: { minHeight: '90px' } }, 'Đang xem bảng xếp hạng lớp...');
+  const rankSection = el('div', {}, [
+    el('div.sec-title', {}, [
+      el('h2', {}, `🏆 Bảng xếp hạng lớp ${u.classCode || ''}`),
+      el('div.ln'),
+    ]),
+    rankBody,
+  ]);
+
+  classLeaderboard(u.classCode, 5).then(({ board, me, myRank, totalStudents }) => {
+    rankBody.classList.remove('center');
+    if (!board.length) {
+      rankBody.replaceChildren(
+        el('div.empty', {}, [
+          el('div.ic', {}, '🏅'),
+          el('div.bold', {}, 'Lớp mình chưa ai chơi cả'),
+          el('div.small', {}, 'Em chơi một lượt là có tên trên bảng ngay!'),
+        ]));
+      return;
+    }
+
+    const inTop = board.some((s) => me && s.id === me.id);
+
+    rankBody.replaceChildren(
+      el('div.tbl-wrap', {}, el('table.tbl', {}, [
+        el('thead', {}, el('tr', {}, [
+          el('th', { style: { width: '52px' } }, '#'),
+          el('th', {}, 'Bạn'),
+          el('th', {}, 'Lượt chơi'),
+          el('th', { style: { textAlign: 'right' } }, 'Tổng điểm'),
+        ])),
+        el('tbody', {}, [
+          ...board.map((s, i) => el('tr' + (me && s.id === me.id ? '.me-row' : ''), {}, [
+            el('td.rank', {}, i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : String(i + 1)),
+            el('td.bold', {}, s.name + (me && s.id === me.id ? ' (em)' : '')),
+            el('td', {}, String(s.plays)),
+            el('td.bold', { style: { textAlign: 'right', color: 'var(--red-700)' } },
+              s.totalScore.toLocaleString('vi-VN')),
+          ])),
+          // Nếu em chưa lọt top 5 thì vẫn hiện riêng 1 dòng cho em
+          !inTop && me ? el('tr.me-row', {}, [
+            el('td.rank', {}, String(myRank)),
+            el('td.bold', {}, me.name + ' (em)'),
+            el('td', {}, String(me.plays)),
+            el('td.bold', { style: { textAlign: 'right', color: 'var(--red-700)' } },
+              me.totalScore.toLocaleString('vi-VN')),
+          ]) : null,
+        ]),
+      ])),
+
+      el('div.row.wrapf', { style: { marginTop: '12px', justifyContent: 'center' } }, [
+        myRank
+          ? el('span.chip', {}, `Em đang xếp thứ ${myRank}/${totalStudents} trong lớp`)
+          : el('span.chip.chip-soft', {}, 'Em chơi một lượt để có tên trên bảng nhé!'),
+        myRank > 1 && board[myRank - 2]
+          ? el('span.chip.chip-soft', {},
+              `Còn ${(board[myRank - 2].totalScore - (me ? me.totalScore : 0)).toLocaleString('vi-VN')} điểm nữa là vượt bạn phía trên`)
+          : null,
+      ]),
+
+      !CLOUD ? el('p.hint.tcenter', { style: { marginTop: '10px' } },
+        '💾 Website đang chạy ngoại tuyến nên bảng này chỉ có dữ liệu trên máy này.') : null,
+    );
+  }).catch(() => {
+    rankBody.replaceChildren(el('div.small.muted', {}, 'Chưa tải được bảng xếp hạng.'));
+  });
 
   /* --------------------------------------------------------- render */
   mount(page(el('div.wrap.stack', { style: { '--gap': '22px' } }, [
@@ -90,6 +158,8 @@ export async function view() {
         ]),
       ]))),
     ]),
+
+    rankSection,
 
     el('div', {}, [
       el('div.sec-title', {}, [el('h2', {}, '📜 Lịch sử gần đây'), el('div.ln')]),
