@@ -44,10 +44,16 @@ export async function view() {
     selected: l.id === lesson.id ? true : null,
   }, `${l.emoji || '📘'}  ${l.title}${l.code ? ' · ' + l.code : ''}`)));
 
+  // Gợi ý trò tiếp theo: trò trong bài này em chưa chơi lần nào
+  const notYet = GAMES.find((g) => !playedGames.has(g.id));
+  const nextGame = (notYet || GAMES[0]).id;
+  const nextLabel = notYet ? `Chơi thử ${notYet.name}` : 'Chơi tiếp';
+
   /* ------------------------------------------- bảng xếp hạng của lớp */
   const rankBody = el('div.card.center', { style: { minHeight: '90px' } }, 'Đang xem bảng xếp hạng lớp...');
   const rankSection = el('div', {}, [
-    el('div.sec-title', {}, [
+    el('div.sec-title', { 'data-reveal': '0' }, [
+      el('span.eyebrow.eyebrow-dark', {}, 'Thi đua'),
       el('h2', {}, `🏆 Bảng xếp hạng lớp ${u.classCode || ''}`),
       el('div.ln'),
     ]),
@@ -115,37 +121,48 @@ export async function view() {
   /* --------------------------------------------------------- render */
   mount(page(el('div.wrap.stack', { style: { '--gap': '22px' } }, [
 
-    el('section.hero', {}, [
+    el('section.hero', { 'data-reveal': '0' }, [
       el('img.hero-fig', { src: '/assets/logo-trong-suot.png', alt: '' }),
-      el('span.chip', {}, `👋 ${u.className || u.classCode}`),
-      el('h1', { style: { marginTop: '10px' } }, `Chào ${u.name}!`),
+      el('span.eyebrow', {}, `${u.className || u.classCode}`),
+      el('h1', {}, `Chào ${u.name}!`),
       el('p', {}, lesson.subtitle
         ? `Hôm nay ôn: ${lesson.title} — ${lesson.subtitle}.`
         : `Hôm nay ôn: ${lesson.title}.`),
+      el('div.hero-cta', {}, [
+        el('button.btn.btn-gold.btn-lg.btn-pill', {
+          onclick: () => go(`/choi/${lesson.id}/${nextGame}`),
+        }, [nextLabel, el('span.knob', {}, '→')]),
+        el('a.btn.btn-ghost.btn-lg.btn-pill', { href: '/bang-so', 'data-link': '' },
+          ['Bảng số 1–99', el('span.knob', {}, '🔢')]),
+      ]),
     ]),
 
-    el('div.row.wrapf', {}, [
+    el('div.row.wrapf', { 'data-reveal': '60' }, [
       el('div', {}, [
         el('div.small.bold', { style: { marginBottom: '5px' } }, '📘 Chọn bài để ôn'),
         lessonPicker,
       ]),
       el('div.grow'),
-      el('a.btn.btn-ghost', { href: '/bang-so', 'data-link': '' }, '🔢 Bảng số 1–99'),
     ]),
 
-    el('div.stat-row', {}, [
-      stat('Tổng điểm', totalPoints.toLocaleString('vi-VN')),
-      stat('Độ chính xác', acc + '%'),
-      stat('Lượt chơi', String(scores.length)),
-      stat('Trò đã thử', `${playedGames.size}`, `/${GAMES.length}`),
-      stat('Từ trong bài', String(lesson.words.length)),
+    el('div.stat-row', { 'data-reveal': '90' }, [
+      ringDefs(),
+      stat('Tổng điểm', totalPoints.toLocaleString('vi-VN'), '', '🏅'),
+      stat('Độ chính xác', acc + '%', '', null, acc),
+      stat('Lượt chơi', String(scores.length), '', '🎮'),
+      stat('Trò đã thử', `${playedGames.size}`, `/${GAMES.length}`, null,
+        Math.round((playedGames.size / GAMES.length) * 100)),
+      stat('Từ trong bài', String(lesson.words.length), '', '📘'),
     ]),
 
     el('div', {}, [
-      el('div.sec-title', {}, [el('h2', {}, '🎮 Chọn trò chơi'), el('div.ln')]),
+      el('div.sec-title', { 'data-reveal': '0' }, [
+        el('span.eyebrow.eyebrow-dark', {}, `${GAMES.length} trò`),
+        el('h2', {}, 'Chọn trò chơi'), el('div.ln'),
+      ]),
       el('div.game-grid', {}, GAMES.map((g) => el('button.game-card.c-' + g.color, {
         onclick: () => go(`/choi/${lesson.id}/${g.id}`),
-      }, [
+      }, el('span.gc-in', {}, [
         el('div.ic', {}, g.icon),
         el('h3', {}, g.name),
         el('div.cn', {}, g.cn),
@@ -156,13 +173,16 @@ export async function view() {
             ? el('span.chip', {}, `🏆 ${best[g.id]}`)
             : el('span.tiny.muted', {}, 'Chưa chơi'),
         ]),
-      ]))),
+      ])))),
     ]),
 
     rankSection,
 
     el('div', {}, [
-      el('div.sec-title', {}, [el('h2', {}, '📜 Lịch sử gần đây'), el('div.ln')]),
+      el('div.sec-title', { 'data-reveal': '0' }, [
+        el('span.eyebrow.eyebrow-dark', {}, 'Nhật ký'),
+        el('h2', {}, 'Lịch sử gần đây'), el('div.ln'),
+      ]),
       scores.length
         ? el('div.tbl-wrap', {}, el('table.tbl', {}, [
             el('thead', {}, el('tr', {}, [
@@ -188,9 +208,46 @@ export async function view() {
   ])));
 }
 
-function stat(k, v, sub = '') {
-  return el('div.stat', {}, [
-    el('div.k', {}, k),
-    el('div.v', {}, [v, sub ? el('small', {}, sub) : null]),
-  ]);
+/** Một ô thống kê: có thể kèm biểu tượng hoặc vòng tròn tiến độ */
+function stat(k, v, sub = '', icon = null, pct = null) {
+  const side = pct !== null ? ring(pct) : icon ? el('div.ic-badge', {}, icon) : null;
+  return el('div.stat', {}, el('div.stat-in', {}, [
+    side,
+    el('div.grow', {}, [
+      el('div.k', {}, k),
+      el('div.v', {}, [v, sub ? el('small', {}, sub) : null]),
+    ]),
+  ]));
+}
+
+/** Vòng tròn tiến độ nhỏ (SVG thuần, không cần thư viện) */
+function ring(pct) {
+  const p = Math.max(0, Math.min(100, Number(pct) || 0));
+  const R = 16;
+  const C = 2 * Math.PI * R;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'ring');
+  svg.setAttribute('viewBox', '0 0 40 40');
+  svg.innerHTML =
+    `<circle class="bg" cx="20" cy="20" r="${R}"></circle>` +
+    `<circle class="fg" cx="20" cy="20" r="${R}" transform="rotate(-90 20 20)"` +
+    ` stroke-dasharray="${C}" stroke-dashoffset="${C}"></circle>`;
+  setTimeout(() => {
+    const fg = svg.querySelector('.fg');
+    if (fg) fg.setAttribute('stroke-dashoffset', String(C * (1 - p / 100)));
+  }, 120);
+  return svg;
+}
+
+/** Khai báo dải màu dùng chung cho các vòng tròn tiến độ */
+function ringDefs() {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', '0');
+  svg.setAttribute('height', '0');
+  svg.style.position = 'absolute';
+  svg.innerHTML =
+    '<defs><linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">' +
+    '<stop offset="0%" stop-color="#FFC02E"/><stop offset="100%" stop-color="#C42A1E"/>' +
+    '</linearGradient></defs>';
+  return svg;
 }

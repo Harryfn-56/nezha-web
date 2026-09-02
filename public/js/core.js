@@ -10,6 +10,32 @@
  */
 export const BUILD_Q = new URL(import.meta.url).search;
 
+/**
+ * Cho các phần tử có thuộc tính data-reveal hiện dần lên khi cuộn tới.
+ * Dùng IntersectionObserver nên không tốn hiệu năng như bắt sự kiện scroll.
+ */
+export function revealOnScroll(root = document) {
+  const nodes = root.querySelectorAll('[data-reveal]:not(.in)');
+  if (!nodes.length) return;
+  if (!('IntersectionObserver' in window)) {
+    nodes.forEach((n) => n.classList.add('in'));
+    return;
+  }
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (!e.isIntersecting) return;
+      const delay = Number(e.target.dataset.reveal) || 0;
+      setTimeout(() => e.target.classList.add('in'), delay);
+      io.unobserve(e.target);
+    });
+  }, { rootMargin: '0px 0px -8% 0px', threshold: 0.06 });
+  nodes.forEach((n) => io.observe(n));
+
+  // Lưới an toàn: sau 2,5 giây thì hiện hết, tránh trường hợp trình duyệt lạ
+  // không kích hoạt hiệu ứng làm mất nội dung
+  setTimeout(() => nodes.forEach((n) => n.classList.add('in')), 2500);
+}
+
 /* ------------------------------------------------------------ DOM */
 
 /**

@@ -8,9 +8,18 @@
  * duyệt (Chrome/Edge/Safari). Máy nghe được câu nào thì so với câu mẫu
  * theo từng chữ, ra tỉ lệ giống nhau:
  *      ≥ 85%  → Phát âm rất chuẩn (điểm tối đa)
- *      ≥ 60%  → Tạm được, còn vài chữ chưa rõ
- *      < 60%  → Chưa đúng, nghe lại rồi thử lần nữa
+ *      ≥ 70%  → Tạm được, còn vài chữ chưa rõ
+ *      < 70%  → Chưa đúng, nghe lại rồi thử lần nữa
  * Mỗi câu được thử 2 lần, lấy lần cao điểm hơn.
+ *
+ * ĐỂ CHẤM ĐÚNG (những chỗ bản đầu làm sai, nay đã sửa):
+ *   • Chỉ lấy PHƯƠNG ÁN MÁY NGHE RÕ NHẤT. Bản cũ lấy 3 phương án rồi chọn
+ *     cái giống câu mẫu nhất — máy đoán mò trúng nên đọc sai vẫn ra "đúng".
+ *   • Tắt loa trước khi mở micro, và không tự động đọc mẫu. Bản cũ vừa vào
+ *     câu là loa đọc mẫu; em bấm micro ngay thì micro nghe chính tiếng loa.
+ *   • Kết quả trả về dưới 0,5 giây coi như nghe nhầm tiếng loa, không tính.
+ *   • Máy nghe không rõ (confidence < 0,5) thì không được xếp "rất chuẩn".
+ *   • Nói thừa/thiếu quá nhiều chữ bị trừ thêm điểm.
  *
  * Máy/trình duyệt nào không hỗ trợ nhận diện giọng nói (hoặc không cho
  * dùng micro) thì tự chuyển sang CHẾ ĐỘ TỰ NGHE LẠI: thu âm giọng của em
@@ -49,9 +58,16 @@ function distance(a, b) {
 /** Tỉ lệ giống nhau 0–100 giữa câu máy nghe được và câu mẫu */
 function similarity(said, target) {
   const a = clean(said), b = clean(target);
-  if (!b) return 0;
-  if (!a) return 0;
-  return Math.max(0, Math.round((1 - distance(a, b) / Math.max(a.length, b.length)) * 100));
+  if (!b || !a) return 0;
+
+  let pct = (1 - distance(a, b) / Math.max(a.length, b.length)) * 100;
+
+  // Nói thừa/thiếu nhiều chữ thì trừ thêm — tránh việc đọc lung tung mà
+  // máy vẫn "bắt" được vài chữ giống rồi cho điểm cao
+  const lenGap = Math.abs(a.length - b.length) / b.length;
+  if (lenGap > 0.34) pct -= Math.min(30, (lenGap - 0.34) * 60);
+
+  return Math.max(0, Math.round(pct));
 }
 
 /** Trộn từ lẻ và câu hoàn chỉnh thành danh sách luyện tập */
@@ -104,7 +120,7 @@ export function play(game, lesson, container) {
     shell.progress(i, items.length);
 
     const status = el('div.speak-status', {}, SR
-      ? 'Bấm nút micro rồi đọc to, rõ ràng nhé!'
+      ? 'Bấm 🔊 nghe mẫu trước, nghe xong mới bấm micro và đọc to nhé!'
       : 'Máy này không chấm được phát âm — em thu âm rồi tự nghe lại so với giọng mẫu.');
     const meter = el('div.bar.speak-meter', {}, el('i', { style: { width: '0%' } }));
     const heard = el('div.speak-heard', {}, '');
@@ -134,6 +150,9 @@ export function play(game, lesson, container) {
           el('button.btn.btn-ghost', { onclick: () => speak(item.hz, { rate: 0.5 }) }, '🐢 Nghe chậm'),
         ]),
 
+        !SR ? el('div.alert', { style: { marginBottom: '12px' } },
+          '⚠️ Máy/trình duyệt này không chấm được phát âm (cần Chrome hoặc Edge). Đang chạy chế độ TỰ ĐÁNH GIÁ — điểm chỉ mang tính luyện tập.') : null,
+
         micBtn,
         meter,
         status,
@@ -158,19 +177,37 @@ export function play(game, lesson, container) {
       status.className = 'speak-status';
       heard.textContent = '';
 
+      // Tắt hẳn loa trước khi mở micro. Nếu không, micro của điện thoại sẽ
+      // nghe chính giọng mẫu đang phát và chấm "rất chuẩn" dù em đọc sai.
+      try { speechSynthesis.cancel(); } catch { /* bỏ qua */ }
+
       let done = false;
+      const openedAt = Date.now();
       const rec = new SR();
       rec.lang = 'zh-CN';
       rec.interimResults = false;
-      rec.maxAlternatives = 3;
+      // CHỈ lấy phương án máy nghe rõ nhất. Trước đây lấy 3 phương án rồi
+      // chọn cái giống nhất — máy đoán mò trúng câu mẫu nên đọc sai vẫn "đúng".
+      rec.maxAlternatives = 1;
 
       rec.onresult = (e) => {
         done = true;
-        const alts = Array.from(e.results[0]).map((r) => r.transcript);
-        const scores = alts.map((t) => similarity(t, item.hz));
-        const pct = Math.max(...scores);
-        const said = alts[scores.indexOf(pct)] || alts[0];
-        grade(pct, said);
+        const first = e.results[0][0] || {};
+        const said = String(first.transcript || '');
+        const conf = typeof first.confidence === 'number' ? first.confidence : 1;
+
+        // Kết quả bật ra gần như tức thì = micro bắt được tiếng loa, không tính
+        if (Date.now() - openedAt < 500) {
+          finishAttempt();
+          status.textContent = '🔇 Máy nghe nhầm tiếng loa. Em chờ đọc mẫu xong rồi hãy bấm micro nhé!';
+          status.className = 'speak-status bad';
+          return;
+        }
+
+        let pct = similarity(said, item.hz);
+        // Nói lí nhí / máy nghe không rõ thì không được xếp "rất chuẩn"
+        if (conf > 0 && conf < 0.5) pct = Math.min(pct, GOOD - 10);
+        grade(pct, said, conf);
       };
       rec.onerror = (e) => {
         done = true;
@@ -197,13 +234,15 @@ export function play(game, lesson, container) {
       micBtn.textContent = tries > 0 && tries < TRIES ? '🎤 Thử lại lần nữa' : '🎤 Nói lại';
     }
 
-    async function grade(pct, said) {
+    async function grade(pct, said, conf = 1) {
       tries++;
       best = Math.max(best, pct);
       finishAttempt();
 
       meter.firstChild.style.width = best + '%';
-      heard.textContent = said ? `Máy nghe được: “${said}”` : '';
+      heard.textContent = said
+        ? `Máy nghe được: “${said}” · giống ${pct}%${conf < 1 ? ` · độ rõ ${Math.round(conf * 100)}%` : ''}`
+        : 'Máy không nghe được chữ tiếng Trung nào — em đọc to và rõ hơn nhé!';
 
       if (best >= GOOD) {
         status.textContent = `✔ Rất chuẩn! Giống ${best}% so với giọng mẫu`;
@@ -223,16 +262,15 @@ export function play(game, lesson, container) {
         status.className = 'speak-status ' + (ok ? 'ok' : 'bad');
         ok ? sfx.correct() : sfx.wrong();
         speak(item.hz);
-        await sleep(1800);
+        await sleep(2200);
         shell.mark(ok, 150, item);
         i++;
         return next();
       }
 
-      status.textContent = `Giống ${best}% — em thử lại lần nữa nhé!`;
+      status.textContent = `Giống ${best}% — nghe lại mẫu rồi thử lần nữa nhé!`;
       status.className = 'speak-status';
       sfx.tick();
-      speak(item.hz);
     }
 
     /* ------------------------- chế độ tự nghe lại (máy không chấm được) */
@@ -271,7 +309,7 @@ export function play(game, lesson, container) {
             el('div.row.wrapf', { style: { marginTop: '10px' } }, [
               el('button.btn.btn-ghost.grow', { onclick: () => speak(item.hz) }, '🔊 Nghe lại mẫu'),
               el('button.btn.btn-green.grow', {
-                onclick: () => { shell.mark(true, 100, item); i++; next(); },
+                onclick: () => { shell.mark(true, 80, item); i++; next(); },
               }, '✅ Em thấy đã giống'),
               el('button.btn.btn-ghost.grow', {
                 onclick: () => { shell.mark(false, 100, item); i++; next(); },
@@ -298,7 +336,8 @@ export function play(game, lesson, container) {
       }
     }
 
-    // Đọc mẫu ngay khi vào câu mới
-    setTimeout(() => speak(item.hz), 350);
+    // Cố tình KHÔNG tự đọc mẫu: nếu loa còn đang phát mà em bấm micro thì
+    // máy sẽ nghe tiếng loa chứ không phải giọng em. Em chủ động bấm
+    // "🔊 Nghe mẫu" trước, nghe xong mới bấm micro.
   }
 }

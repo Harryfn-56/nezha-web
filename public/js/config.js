@@ -97,8 +97,8 @@ export const CONFIG = {
      * speakGoodPercent: giống bao nhiêu % thì coi là phát âm chuẩn
      * speakPassPercent: dưới mức này coi như chưa đạt                */
     speakItems: 8,
-    speakGoodPercent: 85,
-    speakPassPercent: 60,
+    speakGoodPercent: 85,     // giống ≥ 85% → phát âm chuẩn, được điểm tối đa
+    speakPassPercent: 70,     // dưới 70% coi như chưa đạt (trước là 60, quá dễ)
 
     /* --- Phi thuyền bắn thiên thạch --------------------------------
      * Giống Na Tra đại chiến: cứ shipLevelEvery viên bắn trúng thì lên
@@ -115,19 +115,23 @@ export const CONFIG = {
 };
 
 /* ----------------------------------------------------------------------
- * Cho phép nhập Supabase ngay trên web (Quản trị → ☁️ Kết nối) để thử ngay
- * mà chưa cần sửa file này. Lưu ý: cách đó chỉ có tác dụng trên CHÍNH máy
- * đã nhập. Muốn cả trung tâm dùng chung thì vẫn phải điền vào 2 dòng
- * `url` và `anonKey` ở trên rồi build lại.
+ * Máy đang dùng có thể tạm trỏ sang một Supabase khác (Quản trị → ☁️ Kết nối)
+ * mà không cần sửa file này — tiện khi muốn thử nghiệm. Cấu hình tạm đó CHỈ
+ * có tác dụng trên chính máy đã nhập, xoá đi là quay về cấu hình ở trên.
  * -------------------------------------------------------------------- */
 export const SUPABASE_LS_KEY = 'nz_supabase';
 
 try {
-  if (typeof localStorage !== 'undefined' && !CONFIG.supabase.url) {
-    const saved = JSON.parse(localStorage.getItem(SUPABASE_LS_KEY) || 'null');
-    if (saved && saved.url && saved.anonKey) {
-      CONFIG.supabase = { url: saved.url, anonKey: saved.anonKey };
-      CONFIG.supabaseFromBrowser = true;
+  if (typeof localStorage !== 'undefined') {
+    if (localStorage.getItem('nz_offline') === '1') {
+      // Cờ dành cho kiểm thử: ép chạy chế độ ngoại tuyến
+      CONFIG.supabase = { url: '', anonKey: '' };
+    } else {
+      const saved = JSON.parse(localStorage.getItem(SUPABASE_LS_KEY) || 'null');
+      if (saved && saved.url && saved.anonKey) {
+        CONFIG.supabase = { url: saved.url, anonKey: saved.anonKey };
+        CONFIG.supabaseFromBrowser = true;
+      }
     }
   }
 } catch { /* bỏ qua */ }

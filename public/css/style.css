@@ -359,7 +359,7 @@ img { max-width: 100%; display: block; }
 .game-card h3 { margin-bottom: 3px; }
 .game-card .cn { font-size: .84rem; color: var(--accent); font-weight: 700; }
 .game-card p { font-size: .87rem; color: var(--ink-3); margin: 8px 0 0; line-height: 1.45; }
-.game-card .meta { margin-top: 13px; display: flex; align-items: center; gap: 8px; }
+.game-card .meta { margin-top: auto; padding-top: 13px; display: flex; align-items: center; gap: 8px; }
 
 /* Bảng màu accent theo từng game */
 .c-red { --accent: var(--red-500); --accent-soft: #FDE5E1; }
@@ -970,6 +970,232 @@ textarea:focus-visible,
 @media (min-width: 1024px) {
   .stage { padding-top: 34px; }
   .card-pad-lg { padding: 34px; }
+}
+
+
+/* =====================================================================
+   BẢN 1.5 — NÂNG CẤP GIAO DIỆN
+   Hướng thiết kế: "Editorial Luxury" ấm áp theo màu thương hiệu NeZha
+   · Khung lồng 2 lớp (vỏ ngoài + lõi trong) cho mọi thẻ lớn
+   · Thanh điều hướng dạng đảo nổi, kính mờ
+   · Nhãn nhỏ dạng viên thuốc phía trên tiêu đề
+   · Hạt nhiễu rất nhẹ phủ toàn trang cho cảm giác giấy thật
+   · Chuyển động theo đường cong riêng, hiện dần khi cuộn tới
+   ===================================================================== */
+
+:root {
+  --ease-lux: cubic-bezier(.32, .72, 0, 1);
+  --r-2xl: 34px;
+  --r-3xl: 44px;
+  --shell: rgba(140, 26, 18, .05);
+  --shell-line: rgba(140, 26, 18, .10);
+  --inner-top: inset 0 1px 0 rgba(255, 255, 255, .9);
+  --sh-lift: 0 18px 40px -22px rgba(80, 30, 18, .45);
+  --sh-lift-hi: 0 26px 60px -24px rgba(80, 30, 18, .55);
+}
+
+/* --- Hạt nhiễu phủ toàn trang (cố định, không chặn chuột) ------------ */
+body::after {
+  content: ''; position: fixed; inset: 0; z-index: 1; pointer-events: none;
+  opacity: .035; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.screen, .login { position: relative; z-index: 2; }
+
+/* --- Thanh điều hướng dạng đảo nổi ---------------------------------- */
+.nav {
+  position: sticky; top: 14px; z-index: 50;
+  height: auto; margin: 14px auto 0;
+  width: min(1120px, 100% - 28px);
+  border-radius: 999px;
+  background: rgba(255, 252, 246, .72);
+  backdrop-filter: saturate(1.7) blur(18px);
+  -webkit-backdrop-filter: saturate(1.7) blur(18px);
+  box-shadow:
+    0 0 0 1px var(--shell-line),
+    var(--inner-top),
+    0 14px 34px -20px rgba(80, 30, 18, .5);
+  padding: 7px 9px;
+}
+.nav .wrap { width: 100%; }
+.nav-in { height: 54px; }
+.brand img { width: 38px; height: 38px; border-radius: 12px; }
+
+/* --- Khung lồng 2 lớp: vỏ ngoài mềm, lõi trong nổi khối -------------- */
+.bezel {
+  background: var(--shell);
+  border-radius: var(--r-2xl);
+  padding: 7px;
+  box-shadow: 0 0 0 1px var(--shell-line);
+}
+.bezel > .bezel-in {
+  border-radius: calc(var(--r-2xl) - 7px);
+  background: var(--paper);
+  box-shadow: var(--inner-top), var(--sh-lift);
+}
+
+/* --- Nhãn nhỏ phía trên tiêu đề ------------------------------------- */
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 13px; border-radius: 999px;
+  font-size: .68rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase;
+  background: rgba(255, 255, 255, .16); color: rgba(255, 255, 255, .95);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .28);
+}
+.eyebrow-dark {
+  background: var(--shell); color: var(--red-700);
+  box-shadow: inset 0 0 0 1px var(--shell-line);
+}
+
+/* --- Trang chính: khối chào mừng ------------------------------------ */
+.hero {
+  border-radius: var(--r-3xl); padding: 40px 38px 44px;
+  background:
+    radial-gradient(120% 120% at 92% -25%, rgba(255, 205, 90, .55), transparent 55%),
+    radial-gradient(90% 120% at 0% 110%, rgba(216, 27, 84, .35), transparent 60%),
+    linear-gradient(155deg, #A81F16, #5E0F0B);
+  box-shadow: var(--sh-lift-hi), inset 0 1px 0 rgba(255, 255, 255, .14);
+}
+.hero h1 { font-size: clamp(2rem, 5vw, 3.1rem); margin: 14px 0 10px; }
+.hero p { max-width: 52ch; }
+.hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+
+/* Nút viên thuốc có "nút con" tròn ở đuôi */
+.btn-pill { border-radius: 999px; padding-right: 8px; box-shadow: 0 4px 0 var(--bd), var(--sh-lift); }
+.btn-pill .knob {
+  width: 34px; height: 34px; border-radius: 999px; display: grid; place-items: center;
+  background: rgba(255, 255, 255, .22); font-size: 1rem;
+  transition-property: transform, background-color;
+  transition-duration: var(--dur-2); transition-timing-function: var(--ease-lux);
+}
+.btn-pill:hover .knob { transform: translate(3px, -1px) scale(1.06); background: rgba(255, 255, 255, .32); }
+.btn-ghost.btn-pill .knob { background: var(--shell); }
+
+/* --- Ô thống kê: vỏ ngoài + lõi trong + vòng tròn tiến độ ----------- */
+.stat {
+  background: var(--shell); padding: 6px; border-radius: 22px;
+  box-shadow: 0 0 0 1px var(--shell-line);
+}
+.stat > .stat-in {
+  background: var(--paper); border-radius: 16px; padding: 14px 16px;
+  box-shadow: var(--inner-top), 0 10px 22px -18px rgba(80, 30, 18, .6);
+  display: flex; align-items: center; gap: 12px; min-height: 76px;
+}
+.stat:hover { transform: translateY(-3px); }
+.stat .ring { width: 44px; height: 44px; flex: none; }
+.stat .ring circle { fill: none; stroke-width: 6; stroke-linecap: round; }
+.stat .ring .bg { stroke: var(--line-2); }
+.stat .ring .fg { stroke: url(#ringGrad); transition: stroke-dashoffset .9s var(--ease-lux); }
+
+/* --- Thẻ trò chơi: vỏ ngoài + lõi trong, viền sáng theo màu trò ----- */
+.game-grid { grid-template-columns: repeat(auto-fill, minmax(262px, 1fr)); gap: 18px; }
+.game-card {
+  background: var(--shell); padding: 6px; border-radius: 26px;
+  box-shadow: 0 0 0 1px var(--shell-line);
+}
+.game-card::after { display: none; }
+.game-card { display: block; }
+.game-card > .gc-in {
+  display: flex; flex-direction: column; height: 100%;
+  position: relative; overflow: hidden; text-align: left;
+  background: var(--paper); border-radius: 20px; padding: 18px;
+  box-shadow: var(--inner-top), 0 12px 26px -20px rgba(80, 30, 18, .7);
+  transition-property: box-shadow, background-color;
+  transition-duration: var(--dur-2); transition-timing-function: var(--ease-lux);
+}
+.game-card > .gc-in::before {
+  content: ''; position: absolute; inset: 0 0 auto 0; height: 3px;
+  background: linear-gradient(90deg, var(--accent), transparent 85%);
+}
+.game-card:hover { transform: translateY(-6px); box-shadow: 0 0 0 1px var(--accent), var(--sh-lift); }
+.game-card:hover > .gc-in { box-shadow: var(--inner-top), 0 18px 30px -22px var(--accent); }
+.game-card .ic {
+  width: 50px; height: 50px; border-radius: 15px; font-size: 1.55rem;
+  background: linear-gradient(155deg, var(--accent-soft), #fff);
+  box-shadow: inset 0 0 0 1px var(--shell-line), 0 6px 14px -10px var(--accent);
+}
+.game-card h3 { font-size: 1.06rem; }
+.game-card p { font-size: .85rem; }
+
+/* --- Khung câu hỏi trong game --------------------------------------- */
+.qbox {
+  border: 0; border-radius: var(--r-2xl); padding: 34px 26px;
+  background:
+    radial-gradient(120% 90% at 50% -10%, #FFFDF9, var(--paper) 60%);
+  box-shadow: 0 0 0 1px var(--shell-line), var(--inner-top), var(--sh-lift);
+}
+
+/* --- Đáp án: lõi trắng, viền mềm ------------------------------------ */
+.opt {
+  border: 0; border-radius: 18px;
+  box-shadow: 0 0 0 1px var(--shell-line), var(--inner-top), 0 3px 0 var(--line-2);
+}
+.opt:hover:not(.locked) { box-shadow: 0 0 0 2px var(--orange-400), var(--inner-top), 0 6px 14px -8px rgba(245, 144, 30, .8); }
+.opt.correct { box-shadow: 0 0 0 2px var(--ok), var(--inner-top), 0 3px 0 #BDE9CF; }
+.opt.wrong { box-shadow: 0 0 0 2px var(--bad), var(--inner-top), 0 3px 0 #F5C9C3; }
+
+/* --- Tiêu đề mục: có nhãn nhỏ + đường kẻ mảnh dần ------------------- */
+.sec-title { margin: 40px 0 18px; }
+.sec-title h2 { font-size: clamp(1.4rem, 2.6vw, 1.9rem); }
+
+/* --- Thẻ chung: bo tròn hơn, viền mềm ------------------------------- */
+.card { border-radius: 24px; box-shadow: 0 0 0 1px var(--shell-line), var(--inner-top), var(--sh-lift); }
+.tbl-wrap { box-shadow: 0 0 0 1px var(--shell-line), var(--inner-top), var(--sh-lift); border-radius: 22px; }
+table.tbl th { background: linear-gradient(180deg, #FFF6E9, #FFF1DE); }
+
+/* --- Thanh phân đoạn (Học sinh / Giáo viên, các thẻ quản trị) ------- */
+.seg {
+  background: var(--shell); border-radius: 999px; padding: 5px;
+  box-shadow: inset 0 0 0 1px var(--shell-line);
+}
+.seg button { border-radius: 999px; white-space: nowrap; }
+.seg-scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.seg-scroll::-webkit-scrollbar { display: none; }
+.seg button.on {
+  background: var(--paper);
+  box-shadow: var(--inner-top), 0 6px 14px -10px rgba(80, 30, 18, .8);
+}
+
+/* --- Thẻ đăng nhập -------------------------------------------------- */
+.login-card {
+  border: 0; border-radius: var(--r-3xl); padding: 8px; background: var(--shell);
+  box-shadow: 0 0 0 1px var(--shell-line), 0 30px 70px -30px rgba(80, 30, 18, .6);
+}
+.login-top { border-radius: 32px 32px 0 0; }
+.login-body { background: var(--paper); border-radius: 0 0 32px 32px; }
+.login-top img { border-radius: 22px; }
+
+/* Huy hiệu biểu tượng trong ô thống kê */
+.ic-badge {
+  width: 42px; height: 42px; flex: none; border-radius: 13px;
+  display: grid; place-items: center; font-size: 1.25rem;
+  background: linear-gradient(155deg, var(--gold-100), #fff);
+  box-shadow: inset 0 0 0 1px var(--shell-line);
+}
+.stat .k { font-size: .72rem; }
+.stat .v { font-size: 1.55rem; }
+
+/* --- Hiện dần khi cuộn tới ------------------------------------------ */
+[data-reveal] {
+  opacity: 0; transform: translateY(20px); filter: blur(6px);
+  transition-property: opacity, transform, filter;
+  transition-duration: 700ms;
+  transition-timing-function: var(--ease-lux);
+}
+[data-reveal].in { opacity: 1; transform: none; filter: none; }
+/* Phòng khi trình duyệt không chạy IntersectionObserver hoặc khi in trang */
+@media print { [data-reveal] { opacity: 1 !important; transform: none !important; filter: none !important; } }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] { opacity: 1; transform: none; filter: none; }
+}
+
+/* --- Điện thoại: thu gọn cho gọn gàng ------------------------------- */
+@media (max-width: 720px) {
+  .nav { top: 8px; margin-top: 8px; border-radius: 26px; }
+  .nav-in { height: auto; flex-wrap: wrap; gap: 8px; padding: 4px 0; }
+  .hero { padding: 26px 22px 30px; border-radius: 30px; }
+  .game-grid { grid-template-columns: 1fr; }
 }
 
 

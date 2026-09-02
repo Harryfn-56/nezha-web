@@ -12,6 +12,8 @@ def snap(page, name, full=False):
 
 
 # Danh sách học sinh mẫu dùng cho các tab phụ (context riêng = localStorage riêng)
+OFFLINE = "window.localStorage.setItem('nz_offline', '1');"
+
 ROSTER = """
 window.localStorage.setItem('nz_students', JSON.stringify([
   {id:'TN1101::nguyen minh an', name:'Nguyễn Minh An', class_code:'TN1101'},
@@ -25,6 +27,7 @@ window.localStorage.setItem('nz_students', JSON.stringify([
 with sync_playwright() as p:
     b = p.chromium.launch()
     ctx = b.new_context(viewport={"width": 1280, "height": 900})
+    ctx.add_init_script(OFFLINE)
     page = ctx.new_page()
     page.on("console", lambda m: console_errors.append(m.text) if m.type == "error" else None)
     page.on("pageerror", lambda e: console_errors.append("PAGEERROR: " + str(e)))
@@ -186,6 +189,7 @@ with sync_playwright() as p:
     """
     wctx = b.new_context(viewport={"width": 1280, "height": 900})
     wpg = wctx.new_page()
+    wpg.add_init_script(OFFLINE)
     wpg.add_init_script(ROSTER)
     wpg.add_init_script(STUB)
     wpg.goto(BASE, wait_until="networkidle"); time.sleep(0.8)
@@ -241,6 +245,7 @@ with sync_playwright() as p:
 
     # Không tải được thư viện thì báo lỗi tử tế
     fpg = wctx.new_page()
+    fpg.add_init_script(OFFLINE)
     fpg.add_init_script(ROSTER)
     fpg.route("**/hanzi-writer*", lambda r: r.abort())
     fpg.add_init_script("window.HanziWriter = undefined;")
@@ -313,7 +318,7 @@ with sync_playwright() as p:
             this.onresult && this.onresult({ results: [res] });
           }
           this.onend && this.onend();
-        }, 120);
+        }, 900);
       }
       stop() {}
       abort() {}
@@ -322,6 +327,7 @@ with sync_playwright() as p:
     """
     sctx = b.new_context(viewport={"width": 1280, "height": 900})
     spg = sctx.new_page()
+    spg.add_init_script(OFFLINE)
     spg.add_init_script(ROSTER)
     spg.add_init_script(SPEECH)
     spg.goto(BASE, wait_until="networkidle"); time.sleep(0.8)
@@ -345,7 +351,7 @@ with sync_playwright() as p:
     first = target_text(spg)
     spg.evaluate("t => window.__saidText = t", first)
     spg.click("button:has-text('Nói lại')")
-    time.sleep(2.4)
+    time.sleep(3.6)
     body = spg.content()
     if "Rất chuẩn" not in body and target_text(spg) == first:
         errors.append("phát âm: nói đúng nhưng không được chấm đạt")
@@ -356,12 +362,12 @@ with sync_playwright() as p:
     second = target_text(spg)
     spg.evaluate("() => window.__saidText = '天气很好啊'")
     spg.click("button:has-text('Nói lại')")
-    time.sleep(2.2)
+    time.sleep(3.4)
     mid = spg.content()
     if "%" not in mid:
         errors.append("phát âm: không hiện tỉ lệ giống sau khi nói")
     spg.click("button:has-text('Nói lại'), button:has-text('Thử lại lần nữa')")
-    time.sleep(3.0)
+    time.sleep(5.0)
     if target_text(spg) == second:
         errors.append("phát âm: nói sai 2 lần vẫn kẹt lại ở một câu")
     else:
@@ -609,6 +615,7 @@ with sync_playwright() as p:
 
     # ---------------------------------------------------- 9. Mobile
     mctx = b.new_context(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
+    mctx.add_init_script(OFFLINE)
     mctx.add_init_script(ROSTER)
     m = mctx.new_page()
     m.goto(BASE, wait_until="networkidle"); time.sleep(1)

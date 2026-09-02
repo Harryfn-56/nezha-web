@@ -2,7 +2,7 @@
  * LAYOUT — thanh điều hướng và khung trang dùng chung.
  */
 
-import { el, go, initials } from '../core.js';
+import { el, go, initials, revealOnScroll } from '../core.js';
 import { CONFIG } from '../config.js';
 import { currentUser, logout, CLOUD } from '../store.js';
 
@@ -62,9 +62,12 @@ export function footer() {
 
 /** Khung 1 trang thường (có nav + footer) */
 export function page(...content) {
-  return el('div.screen', {}, [
+  const node = el('div.screen', {}, [
     nav(),
     el('main.grow', { style: { paddingTop: '26px', paddingBottom: '10px' } }, content),
     footer(),
   ]);
+  // Chờ trang gắn vào DOM rồi mới bật hiệu ứng hiện dần
+  setTimeout(() => revealOnScroll(node), 30);
+  return node;
 }

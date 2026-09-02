@@ -625,3 +625,52 @@ Bài kiểm thử này giả lập một máy học sinh **chạy nhanh 15 giây
 > trên wifi lớp học). Vì vậy phần nâng cấp trên áp dụng **nguyên tắc thiết kế**
 > của các bộ đó bằng CSS thuần, không kéo React vào dự án.
 
+---
+
+# I. Bản 1.5 — Supabase cắm sẵn, chấm phát âm chuẩn hơn, giao diện mới
+
+## Supabase đã lưu sẵn trong mã nguồn
+
+`public/js/config.js` giờ đã có sẵn `url` và `anonKey` của trung tâm, không phải
+dán lại mỗi lần cập nhật nữa. Mỗi lần tôi gửi bản mới, thầy/cô cứ giải nén đè
+là chạy được ngay.
+
+Muốn tạm trỏ sang một Supabase khác để thử: **Quản trị → ☁️ Kết nối** → nhập rồi
+lưu (chỉ có tác dụng trên máy đó, bấm *Xoá cấu hình trên máy này* là quay về).
+
+> 🔒 **Lưu ý:** `anonKey` là khoá công khai, nhúng vào web tĩnh là đúng cách.
+> Nhưng vì quy tắc truy cập trong `schema.sql` đang mở cho mọi người đọc/ghi,
+> nên đừng công bố địa chỉ website ra ngoài phạm vi trung tâm. Dữ liệu ở đây chỉ
+> gồm tên học sinh và điểm ôn tập, không có gì nhạy cảm.
+
+## Chấm phát âm: đã tìm ra vì sao đọc sai vẫn "đúng"
+
+Có 3 lỗi cộng lại, nay đã sửa hết:
+
+| Lỗi | Vì sao thành "đọc sai vẫn đúng" | Đã sửa |
+|---|---|---|
+| Lấy 3 phương án của bộ nhận diện rồi chọn cái giống câu mẫu nhất | Máy đoán mò, trong 3 phương án gần như luôn có câu mẫu | Chỉ lấy **1 phương án máy nghe rõ nhất** |
+| Vừa vào câu là loa tự đọc mẫu | Bấm micro ngay thì **micro nghe chính tiếng loa** → chấm 100% | Bỏ tự đọc mẫu; mở micro là **tắt loa** trước |
+| Không xét độ rõ, không phạt nói thừa/thiếu | Ề à vài tiếng cũng qua | Độ rõ < 50% thì không được "rất chuẩn"; nói thừa/thiếu quá nhiều bị trừ |
+
+Thêm 2 lớp bảo vệ nữa: kết quả trả về **dưới 0,5 giây** coi như nghe nhầm tiếng
+loa (không tính), và mức đạt nâng từ 60% lên **70%**.
+
+Màn hình cũng hiện rõ **máy nghe được câu gì · giống bao nhiêu % · độ rõ bao
+nhiêu** để thầy/cô kiểm chứng ngay tại chỗ.
+
+> Máy không hỗ trợ nhận diện giọng nói sẽ hiện cảnh báo vàng "đang chạy chế độ
+> TỰ ĐÁNH GIÁ — điểm chỉ mang tính luyện tập", để không ai nhầm là máy đã chấm.
+
+## Giao diện mới
+
+- **Thanh điều hướng dạng đảo nổi**, kính mờ, tách khỏi mép trên
+- **Khung lồng 2 lớp** (vỏ ngoài mềm + lõi trắng nổi khối) cho thẻ trò chơi, ô
+  thống kê, khung câu hỏi, bảng, thẻ đăng nhập — nhìn như vật thể thật
+- **Khối chào mừng** to hơn, có nhãn lớp và 2 nút bo tròn kèm "nút con" ở đuôi,
+  trong đó nút chính gợi ý luôn trò em chưa chơi
+- **Vòng tròn tiến độ** cho Độ chính xác và Trò đã thử; các ô còn lại có huy hiệu
+- **Nhãn nhỏ** (11 TRÒ · THI ĐUA · NHẬT KÝ) phía trên mỗi tiêu đề mục
+- **Hiện dần khi cuộn tới** thay vì bày ra hết cùng lúc
+- Hạt nhiễu rất nhẹ phủ toàn trang cho cảm giác giấy in, không gắt màn hình
+

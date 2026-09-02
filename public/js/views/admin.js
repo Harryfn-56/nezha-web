@@ -33,7 +33,7 @@ export async function view() {
   let tab = sessionStorage.getItem('nz_admin_tab') || 'scores';
   if (!tabs.some(([id]) => id === tab)) tab = 'scores';
 
-  const tabBar = el('div.seg', { style: { maxWidth: '560px' } },
+  const tabBar = el('div.seg.seg-scroll', { style: { maxWidth: '760px' } },
     tabs.map(([id, label]) => el('button' + (tab === id ? '.on' : ''), {
       onclick: () => {
         tab = id;
@@ -113,10 +113,10 @@ async function renderScores(host, user) {
     clear(body);
     body.append(
       el('div.stat-row', { style: { marginBottom: '18px' } }, [
-        el('div.stat', {}, [el('div.k', {}, 'Học sinh'), el('div.v', {}, String(board.length))]),
-        el('div.stat', {}, [el('div.k', {}, 'Lượt chơi'), el('div.v', {}, String(totalPlays))]),
-        el('div.stat', {}, [el('div.k', {}, 'Chính xác TB'), el('div.v', {}, avgAcc + '%')]),
-        el('div.stat', {}, [el('div.k', {}, 'Điểm cao nhất'), el('div.v', {}, String(board[0] ? board[0].totalScore : 0))]),
+        adminStat('🎒', 'Học sinh', String(board.length)),
+        adminStat('🎮', 'Lượt chơi', String(totalPlays)),
+        adminStat('🎯', 'Chính xác TB', avgAcc + '%'),
+        adminStat('🏆', 'Điểm cao nhất', String(board[0] ? board[0].totalScore : 0)),
       ]),
 
       board.length ? el('div.tbl-wrap', {}, el('table.tbl', {}, [
@@ -208,6 +208,14 @@ function exportCsv(rows) {
   const a = el('a', { href: URL.createObjectURL(blob), download: `diem-nezha-${Date.now()}.csv` });
   a.click();
   toast('Đã tải file CSV', 'ok');
+}
+
+/** Ô thống kê của trang quản trị (vỏ ngoài + lõi trong + biểu tượng) */
+function adminStat(icon, k, v) {
+  return el('div.stat', {}, el('div.stat-in', {}, [
+    el('div.ic-badge', {}, icon),
+    el('div.grow', {}, [el('div.k', {}, k), el('div.v', {}, v)]),
+  ]));
 }
 
 /* ==================================================================== */

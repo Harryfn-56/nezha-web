@@ -86,21 +86,21 @@ export function play(game, lesson, container) {
         el('div.game-grid', {}, [
           ...groups.map((g, i) => el('button.game-card.c-' + COLORS[i % COLORS.length], {
             onclick: () => start(g.words, g.name),
-          }, [
+          }, el('span.gc-in', {}, [
             el('div.ic', {}, '🗂️'),
             el('h3', {}, g.name),
             el('p', {}, g.words.slice(0, 4).map((w) => w.hz).join(' · ')),
             el('div.meta', {}, el('span.chip.chip-soft', {}, `${g.words.length} từ`)),
-          ])),
+          ]))),
 
           el('button.game-card.c-crimson', {
             onclick: () => start(lesson.words, 'Tất cả chủ đề'),
-          }, [
+          }, el('span.gc-in', {}, [
             el('div.ic', {}, '🎴'),
             el('h3', {}, 'Tất cả'),
             el('p', {}, 'Lật hết toàn bộ từ trong bài — dành cho lúc ôn tổng kết.'),
             el('div.meta', {}, el('span.chip', {}, `${total} từ`)),
-          ]),
+          ])),
         ]),
       ])),
     ]));
