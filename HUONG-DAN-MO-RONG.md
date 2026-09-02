@@ -674,3 +674,18 @@ nhiêu** để thầy/cô kiểm chứng ngay tại chỗ.
 - **Hiện dần khi cuộn tới** thay vì bày ra hết cùng lúc
 - Hạt nhiễu rất nhẹ phủ toàn trang cho cảm giác giấy in, không gắt màn hình
 
+## Phi thuyền: gợi ý theo đúng những gì em đã gõ
+
+Trước đây chỉ cần gõ đúng 1–2 chữ cái đầu là viên thiên thạch hiện luôn **cả**
+pinyin — hoá ra bày sẵn đáp án. Nay trên viên thiên thạch **chỉ hiện đúng phần
+em đã gõ**:
+
+| Em gõ (thiên thạch 你好 — `nihao`) | Hiện trên thiên thạch |
+|---|---|
+| `ni` | `ni` màu xanh, viền viên sáng xanh |
+| `nih` | `nih` màu xanh |
+| `nin` | `ni` xanh + `n` nền đỏ, viền viên chuyển đỏ |
+
+Viên nào không khớp chữ cái nào thì **không hiện gì cả**. Phi thuyền tự ngắm
+viên mà em đang gõ đúng nhiều chữ nhất.
+

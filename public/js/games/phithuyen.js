@@ -17,10 +17,21 @@ import { Shell } from './shell.js';
 const key = (py) => stripTone(String(py || ''));
 
 /** Học sinh gõ "lu" thay cho "lü/lv" vẫn được tính là đúng */
-const same = (a, b) => {
-  const f = (x) => key(x).replace(/v/g, 'u');
-  return key(a) === key(b) || f(a) === f(b);
-};
+const soft = (x) => key(x).replace(/v/g, 'u');
+const same = (a, b) => key(a) === key(b) || soft(a) === soft(b);
+
+/**
+ * Gõ đúng được bao nhiêu chữ cái đầu của pinyin viên này?
+ * "nihao" mà gõ "ni"  → 2 (đúng hết)
+ * "nihao" mà gõ "nin" → 2 (đúng "ni", sai từ chữ thứ 3)
+ */
+function matchLen(typed, target) {
+  const t = soft(typed);
+  const k = soft(target);
+  let n = 0;
+  while (n < t.length && n < k.length && t[n] === k[n]) n++;
+  return n;
+}
 
 export function play(game, lesson, container) {
   const g = CONFIG.game;
@@ -241,20 +252,41 @@ export function play(game, lesson, container) {
     ship.style.left = m ? m.node.style.left : '50%';
   }
 
-  /* --------------------------------------------------- gợi ý khi gõ */
+  /* --------------------------------------------------- gợi ý khi gõ
+   * Trên mỗi viên thiên thạch CHỈ hiện đúng phần học sinh đã gõ, không
+   * hiện trước cả pinyin (hiện trước thì thành ra bày sẵn đáp án):
+   *    gõ "ni"  cho 你好 → hiện "ni"  màu xanh
+   *    gõ "nih"            → hiện "nih" màu xanh
+   *    gõ "nin"            → hiện "ni" xanh + "n" đỏ (chữ thứ 3 sai)
+   */
   input.addEventListener('input', () => {
-    const typed = key(input.value);
+    const typedRaw = key(input.value);
     let target = null;
+    let bestLen = 0;
+
     meteors.forEach((m) => {
-      const k = key(m.w.py);
-      const hit = typed && (k.startsWith(typed) || k.replace(/v/g, 'u').startsWith(typed.replace(/v/g, 'u')));
-      m.node.classList.toggle('locked-on', !!hit);
       const py = m.node.querySelector('.mpy');
-      if (py) py.textContent = hit ? k : '';
-      if (hit && !target) target = m;
+      const ok = matchLen(typedRaw, m.w.py);          // số chữ cái gõ đúng
+      const wrong = typedRaw.slice(ok);               // phần gõ sai (nếu có)
+      const onTrack = ok > 0 && !wrong.length;        // đang gõ đúng hướng
+
+      m.node.classList.toggle('locked-on', onTrack);
+      m.node.classList.toggle('miss-on', ok > 0 && wrong.length > 0);
+
+      if (py) {
+        py.replaceChildren();
+        if (ok > 0) {
+          py.append(el('span.ok', {}, typedRaw.slice(0, ok)));
+          if (wrong) py.append(el('span.bad', {}, wrong));
+        }
+      }
+
+      // Phi thuyền ngắm viên đang gõ đúng nhiều chữ nhất
+      if (onTrack && ok > bestLen) { bestLen = ok; target = m; }
     });
+
     aimAt(target);
-    if (typed && meteors.some((m) => same(m.w.py, input.value))) shoot();
+    if (typedRaw && meteors.some((m) => same(m.w.py, input.value))) shoot();
   });
 
   input.addEventListener('keydown', (e) => {
