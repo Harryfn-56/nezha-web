@@ -22,6 +22,7 @@ const LS = {
   lessons: 'nz_lessons',
   rooms: 'nz_rooms',
   teachers: 'nz_teachers',
+  students: 'nz_students',
 };
 
 const read = (k, def) => {
@@ -35,6 +36,48 @@ export const CLOUD = hasCloud();
 /*  Lớp gọi REST Supabase                                               */
 /* ==================================================================== */
 
+/* --------------------------------------------------------------------
+ * ĐỒNG HỒ CHUNG
+ * Máy tính / điện thoại của học sinh nhiều khi bị lệch giờ vài chục giây.
+ * Phòng Kahoot tính thời gian bằng mốc "câu hỏi bắt đầu lúc mấy giờ", nên
+ * máy nào lệch giờ là đồng hồ đếm ngược bị hụt đúng bằng khoảng lệch đó
+ * (có em chỉ còn 5 giây trong khi thầy/cô để 20 giây).
+ *
+ * Cách xử lý: mỗi lần gọi Supabase, đọc giờ máy chủ ở header "Date" rồi
+ * tính độ lệch so với giờ máy này. Mọi phép tính thời gian trong phòng
+ * Kahoot dùng serverNow() thay cho Date.now().
+ * Chưa bật Supabase thì thầy/cô và học sinh dùng chung 1 máy nên độ lệch
+ * bằng 0, không ảnh hưởng gì.
+ * ------------------------------------------------------------------ */
+let clockSkew = 0;          // giờ máy chủ − giờ máy này (ms)
+let skewKnown = false;
+
+function noteServerClock(res, sentAt) {
+  try {
+    const raw = res.headers.get('date');
+    if (!raw) return;
+    const serverAt = Date.parse(raw);
+    if (!Number.isFinite(serverAt)) return;
+    const now = Date.now();
+    const rtt = now - sentAt;
+    if (rtt > 8000) return;                       // mạng quá chậm, mẫu không đáng tin
+    // Header Date chỉ chính xác tới giây → cộng thêm 0,5s cho về giữa giây
+    const sample = serverAt + 500 + rtt / 2 - now;
+    clockSkew = skewKnown ? clockSkew * 0.7 + sample * 0.3 : sample;
+    skewKnown = true;
+  } catch { /* bỏ qua */ }
+}
+
+/** Giờ hiện tại theo máy chủ (ms). Chưa biết độ lệch thì dùng giờ máy này. */
+export function serverNow() {
+  return Date.now() + clockSkew;
+}
+
+/** Máy này đang lệch giờ bao nhiêu giây so với máy chủ (để hiện cảnh báo) */
+export function clockSkewSeconds() {
+  return skewKnown ? Math.round(clockSkew / 1000) : 0;
+}
+
 async function sb(table, { method = 'GET', query = '', body = null, prefer = '' } = {}) {
   if (!CLOUD) throw new Error('Chưa cấu hình Supabase');
   const url = `${CONFIG.supabase.url.replace(/\/$/, '')}/rest/v1/${table}${query}`;
@@ -45,11 +88,13 @@ async function sb(table, { method = 'GET', query = '', body = null, prefer = '' 
   };
   if (prefer) headers.Prefer = prefer;
 
+  const sentAt = Date.now();
   const res = await fetch(url, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
   });
+  noteServerClock(res, sentAt);
   if (!res.ok) {
     const txt = await res.text();
     throw new Error(`Supabase ${res.status}: ${txt.slice(0, 200)}`);
@@ -125,7 +170,87 @@ export function logout() {
   localStorage.removeItem(LS.user);
 }
 
-/** Học sinh: tên + mã lớp (mã lớp đóng vai trò mật khẩu) */
+/* ==================================================================== */
+/*  DANH SÁCH HỌC SINH (chỉ giáo viên được thêm)                        */
+/* ==================================================================== */
+
+/** Bỏ dấu tiếng Việt + chữ thường, để so tên không phụ thuộc cách gõ dấu */
+export function normName(s) {
+  return String(s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/gi, 'd')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+export const studentId = (classCode, name) =>
+  `${String(classCode).toUpperCase()}::${normName(name)}`;
+
+/** Danh sách học sinh của 1 lớp (bỏ trống mã lớp = lấy tất cả) */
+export async function listStudents(classCode = '') {
+  const code = String(classCode || '').toUpperCase();
+  if (CLOUD) {
+    try {
+      const q = code
+        ? `?select=*&class_code=eq.${encodeURIComponent(code)}&order=name`
+        : '?select=*&order=class_code,name';
+      const rows = await sb('students', { query: q });
+      if (rows) return rows;
+    } catch (e) { console.warn('listStudents:', e.message); }
+  }
+  const local = read(LS.students, []);
+  return code ? local.filter((s) => String(s.class_code).toUpperCase() === code) : local;
+}
+
+/** Giáo viên thêm 1 học sinh vào lớp */
+export async function addStudent(classCode, name) {
+  const code = String(classCode || '').trim().toUpperCase();
+  const nm = String(name || '').trim().replace(/\s+/g, ' ');
+  if (!code) throw new Error('Chưa chọn lớp');
+  if (nm.length < 2) throw new Error('Tên học sinh quá ngắn');
+
+  const row = { id: studentId(code, nm), name: nm, class_code: code };
+
+  const local = read(LS.students, []).filter((s) => s.id !== row.id);
+  local.push(row);
+  write(LS.students, local);
+
+  if (CLOUD) {
+    try {
+      await sb('students', { method: 'POST', body: row, prefer: 'resolution=merge-duplicates' });
+    } catch (e) { console.warn('Không lưu được học sinh lên cloud:', e.message); }
+  }
+  return row;
+}
+
+/** Thêm nhiều học sinh cùng lúc — mỗi dòng 1 tên */
+export async function addStudents(classCode, text) {
+  const names = String(text || '')
+    .split(/[\n,;]+/)
+    .map((x) => x.trim())
+    .filter((x) => x.length >= 2);
+  const added = [];
+  for (const nm of names) {
+    try { added.push(await addStudent(classCode, nm)); } catch { /* bỏ qua tên lỗi */ }
+  }
+  return added;
+}
+
+export async function removeStudent(id) {
+  write(LS.students, read(LS.students, []).filter((s) => s.id !== id));
+  if (CLOUD) {
+    try { await sb('students', { method: 'DELETE', query: `?id=eq.${encodeURIComponent(id)}` }); }
+    catch (e) { console.warn(e.message); }
+  }
+}
+
+/**
+ * Học sinh đăng nhập: họ tên + mã lớp.
+ * Tên PHẢI có sẵn trong danh sách lớp do giáo viên nhập — như vậy học sinh
+ * không tự tạo được tài khoản lạ để chơi trước xem đáp án.
+ */
 export async function loginStudent(name, classCode) {
   name = String(name).trim().replace(/\s+/g, ' ');
   classCode = String(classCode).trim().toUpperCase();
@@ -137,24 +262,24 @@ export async function loginStudent(name, classCode) {
   const found = classes.find((c) => c.code.toUpperCase() === classCode);
   if (!found) throw new Error('Mã lớp không đúng. Em hỏi lại thầy/cô nhé!');
 
+  const roster = await listStudents(found.code);
+  if (!roster.length) {
+    throw new Error('Lớp này chưa có danh sách học sinh. Thầy/cô cần thêm tên các em trong trang Quản trị trước.');
+  }
+
+  const hit = roster.find((s) => normName(s.name) === normName(name));
+  if (!hit) {
+    throw new Error('Không tìm thấy tên em trong danh sách lớp. Em kiểm tra lại chính tả hoặc hỏi thầy/cô nhé!');
+  }
+
   const user = {
     role: 'student',
-    name,
+    name: hit.name,                 // dùng đúng tên thầy/cô đã nhập
     classCode: found.code,
     className: found.name,
-    id: `${found.code}::${name.toLowerCase()}`,
+    id: hit.id || studentId(found.code, hit.name),
     since: Date.now(),
   };
-
-  if (CLOUD) {
-    try {
-      await sb('students', {
-        method: 'POST',
-        body: { id: user.id, name, class_code: found.code },
-        prefer: 'resolution=merge-duplicates',
-      });
-    } catch (e) { console.warn('Không lưu được học sinh lên cloud:', e.message); }
-  }
 
   write(LS.user, user);
   return user;
@@ -490,7 +615,7 @@ export async function createRoom(pin, lessonId, questions) {
     phase: 'lobby',
     q_index: -1,
     question_started_at: null,
-    updated_at: new Date().toISOString(),
+    updated_at: new Date(serverNow()).toISOString(),
   };
   if (CLOUD) {
     await sb('rooms', { method: 'POST', body: room, prefer: 'resolution=merge-duplicates' });
@@ -511,7 +636,7 @@ export async function getRoom(pin) {
 }
 
 export async function updateRoom(pin, patch) {
-  patch.updated_at = new Date().toISOString();
+  patch.updated_at = new Date(serverNow()).toISOString();
   if (CLOUD) {
     await sb('rooms', { method: 'PATCH', query: `?pin=eq.${encodeURIComponent(pin)}`, body: patch });
   } else {
@@ -545,7 +670,7 @@ export async function joinRoom(pin, name, classCode) {
     score: 0,
     correct_count: 0,
     answered_index: -1,
-    joined_at: new Date().toISOString(),
+    joined_at: new Date(serverNow()).toISOString(),
   };
   if (CLOUD) {
     await sb('room_players', { method: 'POST', body: player, prefer: 'resolution=merge-duplicates' });

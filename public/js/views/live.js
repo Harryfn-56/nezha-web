@@ -12,7 +12,9 @@ import { CONFIG } from '../config.js';
 import {
   currentUser, listLessons, makePin, createRoom, getRoom, updateRoom, closeRoom,
   joinRoom, listPlayers, submitAnswer, watchRoom, CLOUD,
+  serverNow, clockSkewSeconds,
 } from '../store.js';
+import { distractors } from '../games/shell.js';
 import { page } from './layout.js';
 
 const SYMS = ['▲', '◆', '●', '■'];
@@ -21,7 +23,8 @@ const SYMS = ['▲', '◆', '●', '■'];
 function makeQuestions(lesson, count) {
   const picked = sample(lesson.words, Math.min(count, lesson.words.length));
   return picked.map((w, i) => {
-    const others = shuffle(lesson.words.filter((x) => x.hz !== w.hz)).slice(0, 3);
+    // Không lấy từ trùng nghĩa làm đáp án nhiễu
+    const others = distractors(lesson.words, w, 3, 'vi');
     const opts = shuffle([w, ...others]);
     // Xen kẽ hỏi nghĩa và hỏi Hán tự cho đỡ nhàm
     const askMeaning = i % 2 === 0;
@@ -140,7 +143,12 @@ export async function host() {
 
     const q = questions[idx];
     const secs = Number(q.secs) || Number(sessionStorage.getItem('nz_live_secs')) || CONFIG.game.liveSeconds;
-    await updateRoom(pin, { phase: 'question', q_index: idx, question_started_at: new Date().toISOString() });
+    // Mốc bắt đầu ghi theo GIỜ MÁY CHỦ để máy nào lệch giờ cũng tính đúng
+    const startedAt = serverNow();
+    await updateRoom(pin, {
+      phase: 'question', q_index: idx,
+      question_started_at: new Date(startedAt).toISOString(),
+    });
 
     const clock = el('div.countdown', {}, String(secs));
     const answeredTag = el('span.chip', {}, '0 đã trả lời');
@@ -155,7 +163,7 @@ export async function host() {
       ]),
       el('div.bar.timer', { style: { marginBottom: '20px' } }, barFill),
       el('div.qbox', {}, [
-        el('div.lbl', {}, q.ask === 'hz2vi' ? 'Từ này nghĩa là gì?' : 'Từ nào có nghĩa là'),
+        el('div.lbl', {}, q.ask === 'hz2vi' ? 'Từ này nghĩa là gì?' : 'Từ nào có nghĩa là:'),
         q.ask === 'hz2vi'
           ? el('div.q-hz', {}, q.prompt)
           : el('div.q-vi', {}, `“${q.prompt}”`),
@@ -174,7 +182,7 @@ export async function host() {
 
     if (q.ask === 'hz2vi') speak(q.hz);
 
-    const t0 = Date.now();
+    const t0 = startedAt;
     let stopPoll = watchRoom(pin, (room, players) => {
       const n = players.filter((p) => p.answered_index === idx).length;
       answeredTag.textContent = `${n}/${players.length} đã trả lời`;
@@ -187,7 +195,7 @@ export async function host() {
 
     let ended = false;
     const iv = setInterval(() => {
-      const left = Math.max(0, secs * 1000 - (Date.now() - t0));
+      const left = Math.max(0, secs * 1000 - (serverNow() - t0));
       clock.textContent = String(Math.ceil(left / 1000));
       barFill.style.width = (left / (secs * 1000)) * 100 + '%';
       if (left <= 5000) sfx.tick();
@@ -285,10 +293,19 @@ export async function host() {
 /*  MÀN HÌNH HỌC SINH                                                   */
 /* ==================================================================== */
 
+const ME_KEY = 'nz_live_me';   // nhớ phòng đang chơi để vào lại được khi lỡ thoát
+
 export function join() {
   const u = currentUser();
   const root = el('div.wrap');
   mount(page(root));
+
+  const saveMe = () => {
+    try {
+      sessionStorage.setItem(ME_KEY, JSON.stringify({ pin, player, myScore }));
+    } catch { /* bỏ qua */ }
+  };
+  const clearMe = () => { try { sessionStorage.removeItem(ME_KEY); } catch { /* bỏ qua */ } };
 
   let stopWatch = null;
   let player = null;
@@ -333,8 +350,22 @@ export function join() {
             if (n.length < 2) return toast('Em nhập tên nhé', 'bad');
             try {
               pin = p;
-              player = await joinRoom(p, n, u ? u.classCode : '');
+              // Hai bạn trùng tên trong cùng phòng thì tự thêm số cho khỏi lẫn điểm
+              let finalName = n;
+              try {
+                const others = await listPlayers(p);
+                const taken = new Set(others.map((x) => String(x.id)));
+                let k = 2;
+                while (taken.has(`${p}::${finalName.toLowerCase()}`)) {
+                  finalName = `${n} (${k++})`;
+                }
+              } catch { /* phòng chưa có ai */ }
+
+              player = await joinRoom(p, finalName, u ? u.classCode : '');
+              myScore = 0;
+              saveMe();
               sfx.join();
+              if (finalName !== n) toast(`Trong phòng đã có bạn tên "${n}", em vào với tên "${finalName}"`, '');
               waitScreen();
             } catch (e) { toast(e.message, 'bad'); }
           },
@@ -355,6 +386,13 @@ export function join() {
       el('div.player-tag', { style: { display: 'inline-block', marginTop: '10px' } }, player.name),
       el('div', { style: { marginTop: '24px' } },
         el('span.chip.chip-soft', {}, `Mã phòng: ${pin}`)),
+
+      // Máy lệch giờ nhiều thì báo cho biết (đồng hồ vẫn chạy đúng vì đã
+      // đồng bộ theo giờ máy chủ, nhưng nên chỉnh lại giờ cho chuẩn)
+      Math.abs(clockSkewSeconds()) >= 20
+        ? el('p.hint', { style: { marginTop: '14px' } },
+            `⏰ Đồng hồ máy này đang lệch khoảng ${Math.abs(clockSkewSeconds())} giây so với máy chủ — em vẫn chơi bình thường, nhưng nên bật "đặt giờ tự động" trong Cài đặt máy.`)
+        : null,
     ]));
     startWatching();
   }
@@ -362,7 +400,13 @@ export function join() {
   function startWatching() {
     if (stopWatch) stopWatch();
     stopWatch = watchRoom(pin, (room) => {
-      if (!room) { toast('Phòng đã đóng'); if (stopWatch) stopWatch(); joinScreen(); return; }
+      if (!room) {
+        toast('Phòng đã đóng');
+        clearMe();
+        if (stopWatch) stopWatch();
+        joinScreen();
+        return;
+      }
       if (room.phase === lastPhase && room.q_index === lastIndex) return;
       lastPhase = room.phase;
       lastIndex = room.q_index;
@@ -377,11 +421,28 @@ export function join() {
     const q = room.questions[room.q_index];
     if (!q) return;
     const secs = Number(q.secs) || CONFIG.game.liveSeconds;
-    const started = new Date(room.question_started_at).getTime();
+    const total = secs * 1000;
+
+    /* Thời gian còn lại tính theo GIỜ MÁY CHỦ.
+     * Trước đây lấy giờ của chính máy học sinh: máy nào bị lệch giờ (rất hay
+     * gặp trên điện thoại) là đồng hồ hụt đúng bằng khoảng lệch — có em chỉ
+     * còn 5 giây trong khi thầy/cô để 20 giây.
+     * Nếu con số tính ra vẫn vô lý (mốc giờ hỏng) thì cho chạy đủ giờ. */
+    const startedRaw = Date.parse(room.question_started_at);
+    const started = Number.isFinite(startedRaw) ? startedRaw : serverNow();
+    const leftMs = () => {
+      const elapsed = serverNow() - started;
+      if (elapsed < -2000 || elapsed > total + 15000) return total;   // mốc giờ không đáng tin
+      return Math.max(0, total - elapsed);
+    };
+
     let answered = false;
 
-    const status = el('div.tcenter', { style: { marginBottom: '14px' } },
-      el('span.chip', {}, `Câu ${room.q_index + 1}`));
+    const clock = el('span.pill.pill-score', {}, String(Math.ceil(leftMs() / 1000)));
+    const status = el('div.row-between', { style: { marginBottom: '14px' } }, [
+      el('span.chip', {}, `Câu ${room.q_index + 1}`),
+      clock,
+    ]);
     const barFill = el('i', { style: { width: '100%' } });
 
     const opts = q.options.map((o, i) => el('button.k-opt.k-' + i, {
@@ -396,7 +457,7 @@ export function join() {
       status,
       el('div.bar.timer', { style: { marginBottom: '16px' } }, barFill),
       el('div.qbox', { style: { padding: '20px' } }, [
-        el('div.lbl', {}, q.ask === 'hz2vi' ? 'Từ này nghĩa là gì?' : 'Từ nào có nghĩa là'),
+        el('div.lbl', {}, q.ask === 'hz2vi' ? 'Từ này nghĩa là gì?' : 'Từ nào có nghĩa là:'),
         q.ask === 'hz2vi'
           ? el('div.hz', { style: { fontSize: 'clamp(2.4rem,12vw,3.6rem)' } }, q.prompt)
           : el('div.q-vi', {}, `“${q.prompt}”`),
@@ -405,8 +466,9 @@ export function join() {
     ]));
 
     const iv = setInterval(() => {
-      const left = Math.max(0, secs * 1000 - (Date.now() - started));
-      barFill.style.width = (left / (secs * 1000)) * 100 + '%';
+      const left = leftMs();
+      barFill.style.width = (left / total) * 100 + '%';
+      clock.textContent = String(Math.ceil(left / 1000));
       if (left <= 0) { clearInterval(iv); if (!answered) lockOut(); }
     }, 200);
 
@@ -415,10 +477,10 @@ export function join() {
       answered = true;
       clearInterval(iv);
 
-      const left = Math.max(0, secs * 1000 - (Date.now() - started));
+      const left = leftMs();
       const ok = i === q.answer;
       // Điểm theo tốc độ: trả lời càng nhanh càng nhiều (tối đa 1000 như Kahoot)
-      const gained = ok ? Math.round(500 + 500 * (left / (secs * 1000))) : 0;
+      const gained = ok ? Math.round(500 + 500 * (left / total)) : 0;
 
       // Ghi nhớ để công bố sau — CHƯA cộng điểm, CHƯA nói đúng/sai
       pending = { index: room.q_index, choice: i, ok, gained, q };
@@ -470,6 +532,7 @@ export function join() {
 
     if (answeredThis) myScore += gained;
     pending = null;
+    saveMe();
 
     ok ? sfx.correct() : sfx.wrong();
 
@@ -497,6 +560,7 @@ export function join() {
 
   async function finalScreen() {
     if (stopWatch) stopWatch();
+    clearMe();
     const players = await listPlayers(pin);
     const rank = players.findIndex((p) => p.id === player.id) + 1;
     if (rank <= 3) confetti(120);
@@ -520,5 +584,28 @@ export function join() {
   }
 
   window.addEventListener('popstate', () => { if (stopWatch) stopWatch(); }, { once: true });
-  joinScreen();
+
+  /**
+   * Lỡ tắt trình duyệt / bấm nhầm nút back giữa lúc đang thi thì vào lại
+   * đúng phòng cũ, giữ nguyên điểm — không phải nhập lại mã PIN.
+   */
+  async function resumeOrJoin() {
+    let saved = null;
+    try { saved = JSON.parse(sessionStorage.getItem(ME_KEY) || 'null'); } catch { /* bỏ qua */ }
+    if (!saved || !saved.pin || !saved.player) return joinScreen();
+
+    try {
+      const room = await getRoom(saved.pin);
+      if (!room || room.phase === 'end') { clearMe(); return joinScreen(); }
+      pin = saved.pin;
+      player = saved.player;
+      myScore = Number(saved.myScore) || 0;
+      toast('Đã vào lại phòng ' + pin, 'ok');
+      waitScreen();
+    } catch {
+      joinScreen();
+    }
+  }
+
+  resumeOrJoin();
 }

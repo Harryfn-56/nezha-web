@@ -11,7 +11,7 @@
 
 import { el, shuffle, sample, sfx, speak, sleep, toast } from '../core.js';
 import { CONFIG } from '../config.js';
-import { Shell } from './shell.js';
+import { Shell, distractors } from './shell.js';
 
 /** Thời gian rơi (ms) của một cấp độ */
 function fallMsForLevel(level) {
@@ -71,7 +71,7 @@ export function play(game, lesson, container) {
     }
 
     const word = sample(lesson.words, 1)[0];
-    const distract = shuffle(lesson.words.filter((w) => w.hz !== word.hz)).slice(0, 3);
+    const distract = distractors(lesson.words, word, 3, 'vi');
     const options = shuffle([word, ...distract]);
     current = { word, options, done: false };
 

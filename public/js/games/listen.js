@@ -7,7 +7,7 @@
 
 import { el, sample, shuffle, sleep, speak, canSpeak } from '../core.js';
 import { CONFIG } from '../config.js';
-import { Shell, timeScore } from './shell.js';
+import { Shell, timeScore, distractors } from './shell.js';
 
 export function play(game, lesson, container) {
   const hasVoice = canSpeak();
@@ -22,7 +22,8 @@ export function play(game, lesson, container) {
   function next() {
     if (i >= picked.length) return shell.finish();
     const word = picked[i];
-    const others = shuffle(lesson.words.filter((w) => w.hz !== word.hz)).slice(0, 3);
+    // Không lấy từ đồng âm làm đáp án nhiễu (他/她 cùng đọc "tā")
+    const others = distractors(lesson.words, word, 3, 'py');
     const options = shuffle([word, ...others]);
     locked = false;
     shell.progress(i, picked.length);

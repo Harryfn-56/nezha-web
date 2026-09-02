@@ -51,8 +51,8 @@ export const CONFIG = {
    *      B4. npm run build  →  tải lại dist/ lên Hostinger
    * ---------------------------------------------------------------- */
   supabase: {
-    url: 'https://bgduzfskeqfnboytktus.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJnZHV6ZnNrZXFmbmJveXRrdHVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY3OTQxMTEsImV4cCI6MjEwMjM3MDExMX0.oU89B3qG0GJlJ1Zup3l0T9_Ttrch4vWgo712oJ2ETqU',
+    url: '',
+    anonKey: '',
   },
 
   /* ------------------------------------------------------------------
@@ -91,6 +91,26 @@ export const CONFIG = {
      *   Trò này cần mạng để tải dữ liệu thứ tự nét của từng chữ.     */
     writeChars: 8,
     hanziWriterCdn: 'https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js',
+
+    /* --- Luyện phát âm ---------------------------------------------
+     * speakItems: mỗi lượt luyện bao nhiêu từ/câu (khoảng 40% là câu)
+     * speakGoodPercent: giống bao nhiêu % thì coi là phát âm chuẩn
+     * speakPassPercent: dưới mức này coi như chưa đạt                */
+    speakItems: 8,
+    speakGoodPercent: 85,
+    speakPassPercent: 60,
+
+    /* --- Phi thuyền bắn thiên thạch --------------------------------
+     * Giống Na Tra đại chiến: cứ shipLevelEvery viên bắn trúng thì lên
+     * 1 cấp — rơi nhanh hơn và nhiều viên cùng lúc hơn.
+     *   Cấp 1: 9.0s/viên, tối đa 2 viên · Cấp 3: 6.7s, 3 viên
+     *   Cấp 5: 5.0s, 4 viên · Cấp 7 trở đi: nhanh nhất 3.0s, 5 viên   */
+    shipLives: 3,               // số mạng
+    shipStartSeconds: 9,        // thời gian rơi ở cấp 1 (giây)
+    shipLevelEvery: 6,          // bắn trúng mấy viên thì lên cấp
+    shipSpeedUp: 0.86,          // mỗi cấp còn 86% thời gian của cấp trước
+    shipMinSeconds: 3,          // nhanh nhất (giây)
+    shipMaxMeteors: 5,          // nhiều nhất bao nhiêu viên cùng lúc
   },
 };
 

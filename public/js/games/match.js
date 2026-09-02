@@ -9,7 +9,16 @@ import { CONFIG } from '../config.js';
 import { Shell } from './shell.js';
 
 export function play(game, lesson, container) {
-  const pairs = sample(lesson.words, Math.min(CONFIG.game.matchPairs, lesson.words.length));
+  // Không lấy 2 từ trùng nghĩa vào cùng một ván (sẽ không biết ghép ô nào)
+  const uniq = [];
+  const seenVi = new Set();
+  for (const w of shuffle(lesson.words)) {
+    const k = String(w.vi).trim().toLowerCase();
+    if (seenVi.has(k)) continue;
+    seenVi.add(k);
+    uniq.push(w);
+  }
+  const pairs = sample(uniq, Math.min(CONFIG.game.matchPairs, uniq.length));
   const shell = new Shell({ game, lesson, total: pairs.length });
   shell.attach(container);
 

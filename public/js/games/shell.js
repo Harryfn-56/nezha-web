@@ -211,6 +211,43 @@ export class Shell {
 /*  Hàm dựng câu hỏi trắc nghiệm dùng chung                            */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Chọn đáp án nhiễu KHÔNG bị trùng nghĩa/pinyin với đáp án đúng.
+ * Ví dụ 他 và 她 cùng đọc "tā" nên không được đứng chung trong câu hỏi
+ * nghe — nếu không học sinh chọn đúng vẫn bị chấm sai.
+ *
+ * @param {Array} pool   toàn bộ từ của bài
+ * @param {object} word  từ đang hỏi
+ * @param {number} n     cần bao nhiêu đáp án nhiễu
+ * @param {string} field trường không được trùng: 'vi' | 'py' | 'hz'
+ */
+export function distractors(pool, word, n = 3, field = 'vi') {
+  const norm = (w) => String(w[field] || '').trim().toLowerCase();
+  const key = norm(word);
+  const seen = new Set([key]);
+  const safe = [];
+  const rest = [];
+
+  for (const w of shuffleArr(pool)) {
+    if (w.hz === word.hz) continue;
+    const k = norm(w);
+    if (seen.has(k)) { rest.push(w); continue; }
+    seen.add(k);
+    safe.push(w);
+  }
+  // Thiếu thì mới lấy tạm những từ bị trùng (bài quá ít từ)
+  return safe.concat(rest).slice(0, n);
+}
+
+function shuffleArr(a) {
+  const x = a.slice();
+  for (let i = x.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [x[i], x[j]] = [x[j], x[i]];
+  }
+  return x;
+}
+
 /** Tính điểm theo thời gian còn lại: trả lời nhanh được nhiều điểm hơn */
 export function timeScore(fractionLeft, base = 100) {
   return Math.round(base * (0.5 + 0.5 * Math.max(0, Math.min(1, fractionLeft))));

@@ -10,6 +10,18 @@ console_errors = []
 def snap(page, name, full=False):
     page.screenshot(path=f"{SHOTS}/{name}.png", full_page=full)
 
+
+# Danh sách học sinh mẫu dùng cho các tab phụ (context riêng = localStorage riêng)
+ROSTER = """
+window.localStorage.setItem('nz_students', JSON.stringify([
+  {id:'TN1101::nguyen minh an', name:'Nguyễn Minh An', class_code:'TN1101'},
+  {id:'TN1101::tro viet',       name:'Trò Viết',       class_code:'TN1101'},
+  {id:'TN1101::tro ban',        name:'Trò Bắn',        class_code:'TN1101'},
+  {id:'TN1101::tro noi',        name:'Trò Nói',        class_code:'TN1101'},
+  {id:'TH2001::tran bao ngoc',  name:'Trần Bảo Ngọc',  class_code:'TH2001'}
+]));
+"""
+
 with sync_playwright() as p:
     b = p.chromium.launch()
     ctx = b.new_context(viewport={"width": 1280, "height": 900})
@@ -17,13 +29,62 @@ with sync_playwright() as p:
     page.on("console", lambda m: console_errors.append(m.text) if m.type == "error" else None)
     page.on("pageerror", lambda e: console_errors.append("PAGEERROR: " + str(e)))
 
-    # ---------------------------------------------------- 1. Đăng nhập
+    # -------------------------------- 0. Giáo viên nhập danh sách học sinh
     page.goto(BASE, wait_until="networkidle")
     time.sleep(1)
     snap(page, "01-login")
     assert "NeZha" in page.content(), "Không thấy tên trung tâm"
 
+    # Chưa có danh sách thì học sinh KHÔNG được vào
     page.fill("input[placeholder*='Nguyễn']", "Nguyễn Minh An")
+    page.fill("input[placeholder*='TH2001']", "TN1101")
+    page.click("button:has-text('Bắt đầu học')")
+    time.sleep(1.5)
+    if "chưa có danh sách" not in page.content():
+        errors.append("tài khoản: lớp chưa có danh sách mà học sinh vẫn vào được")
+    else:
+        print("✅ Lớp chưa có danh sách thì học sinh không vào được")
+
+    page.click("button:has-text('Giáo viên')")
+    time.sleep(0.5)
+    page.fill("input[type=password]", "nezha2026")
+    page.click("button:has-text('Vào trang quản trị')")
+    page.wait_for_url("**/quan-tri", timeout=8000)
+    time.sleep(1.5)
+    page.click("button:has-text('Học sinh')")
+    time.sleep(1.5)
+    page.fill("textarea", "Nguyễn Minh An\nTrò Viết\nTrò Bắn\nTrò Nói")
+    page.click("button:has-text('Thêm cả danh sách')")
+    time.sleep(1.8)
+    snap(page, "00-danh-sach-hoc-sinh", full=True)
+    if "Nguyễn Minh An" not in page.content():
+        errors.append("tài khoản: giáo viên không thêm được học sinh")
+    else:
+        print("✅ Giáo viên nhập được danh sách học sinh của lớp")
+
+    # đổi lớp sang TH2001 rồi thêm 1 em cho phần kiểm thử điện thoại
+    page.select_option("select.input", "TH2001")
+    time.sleep(1.5)
+    page.fill("input[placeholder*='Nguyễn Minh An']", "Trần Bảo Ngọc")
+    page.click("button:text-is('Thêm')")
+    time.sleep(1.5)
+
+    page.evaluate("localStorage.removeItem('nz_user')")
+    page.goto(BASE, wait_until="networkidle")
+    time.sleep(1)
+
+    # ---------------------------------------------------- 1. Đăng nhập
+    # Tên lạ vẫn bị từ chối
+    page.fill("input[placeholder*='Nguyễn']", "Ban Choi Truoc")
+    page.fill("input[placeholder*='TH2001']", "TN1101")
+    page.click("button:has-text('Bắt đầu học')")
+    time.sleep(1.5)
+    if "Không tìm thấy tên em" not in page.content():
+        errors.append("tài khoản: tên không có trong danh sách vẫn đăng nhập được")
+    else:
+        print("✅ Tên lạ không đăng nhập được (không tự tạo tài khoản chơi trước)")
+
+    page.fill("input[placeholder*='Nguyễn']", "nguyen minh an")   # gõ không dấu vẫn vào được
     page.fill("input[placeholder*='TH2001']", "TN1101")
     page.click("button:has-text('Bắt đầu học')")
     page.wait_for_url("**/hoc", timeout=8000)
@@ -34,7 +95,7 @@ with sync_playwright() as p:
 
     cards = page.query_selector_all(".game-card")
     print(f"✅ Có {len(cards)} thẻ trò chơi")
-    assert len(cards) == 9, f"Cần 9 game, thấy {len(cards)}"
+    assert len(cards) == 11, f"Cần 11 game, thấy {len(cards)}"
 
     # ---------------------------------------------------- 2. Từng game
     games = [
@@ -46,6 +107,7 @@ with sync_playwright() as p:
         ("sentence", "08-sentence"),
         ("datequiz", "09-datequiz"),
         ("rush", "10-rush"),
+        ("phithuyen", "11-phithuyen"),
     ]
     for gid, shot in games:
         page.goto(f"{BASE}/choi/tn1101-1-5/{gid}", wait_until="networkidle")
@@ -93,6 +155,9 @@ with sync_playwright() as p:
                 speeds.append(s)
         want = meaning.get(faller.inner_text().strip(), None)
         opts = page.query_selector_all(".opt:not(.locked)")
+        if not opts:            # vừa hết mạng hoặc đang chuyển câu
+            time.sleep(0.6)
+            continue
         target = next((o for o in opts if want and want in o.inner_text()), None)
         (target or opts[0]).click()
         time.sleep(1.0)
@@ -121,6 +186,7 @@ with sync_playwright() as p:
     """
     wctx = b.new_context(viewport={"width": 1280, "height": 900})
     wpg = wctx.new_page()
+    wpg.add_init_script(ROSTER)
     wpg.add_init_script(STUB)
     wpg.goto(BASE, wait_until="networkidle"); time.sleep(0.8)
     wpg.fill("input[placeholder*='Nguyễn']", "Trò Viết")
@@ -128,10 +194,10 @@ with sync_playwright() as p:
     wpg.click("button:has-text('Bắt đầu học')")
     wpg.wait_for_url("**/hoc", timeout=8000); time.sleep(1)
     n_games = len(wpg.query_selector_all(".game-card"))
-    if n_games != 9:
-        errors.append(f"trang chính: cần 9 trò chơi, thấy {n_games}")
+    if n_games != 11:
+        errors.append(f"trang chính: cần 11 trò chơi, thấy {n_games}")
     else:
-        print("✅ Trang chính có 9 trò chơi (thêm Tập viết)")
+        print("✅ Trang chính có 11 trò chơi")
 
     wpg.goto(f"{BASE}/choi/tn1101-1-5/viet", wait_until="networkidle")
     time.sleep(1.5)
@@ -175,6 +241,7 @@ with sync_playwright() as p:
 
     # Không tải được thư viện thì báo lỗi tử tế
     fpg = wctx.new_page()
+    fpg.add_init_script(ROSTER)
     fpg.route("**/hanzi-writer*", lambda r: r.abort())
     fpg.add_init_script("window.HanziWriter = undefined;")
     fpg.goto(f"{BASE}/choi/tn1101-1-5/viet", wait_until="networkidle")
@@ -186,6 +253,121 @@ with sync_playwright() as p:
     snap(fpg, "09d-viet-offline", full=True)
     fpg.close()
     wctx.close()
+
+    # ------------------------------- 2c-ter. Phi thuyền bắn thiên thạch
+    page.goto(f"{BASE}/choi/tn1101-1-5/phithuyen", wait_until="networkidle")
+    time.sleep(1.5)
+    pinyin_of = page.evaluate(
+        "async () => { const m = await import('/js/data.js');"
+        " const o = {}; m.LESSONS[0].words.forEach(w => o[w.hz] = w.py); return o; }")
+
+    def strip_tone(t):
+        import unicodedata
+        t = unicodedata.normalize("NFD", t)
+        t = "".join(c for c in t if not unicodedata.combining(c))
+        return "".join(c for c in t.lower() if c.isalnum())
+
+    shot_ok = 0
+    for _ in range(14):
+        met = page.query_selector_all(".meteor")
+        if not met:
+            time.sleep(0.6)
+            continue
+        hz = met[0].query_selector(".mhz").inner_text().strip()
+        py = pinyin_of.get(hz)
+        if not py:
+            break
+        page.fill(".type-bar", strip_tone(py))
+        time.sleep(0.5)
+        if len(page.query_selector_all(".meteor")) < len(met):
+            shot_ok += 1
+        if shot_ok >= 3:
+            break
+    snap(page, "11b-phithuyen-play", full=True)
+    if shot_ok < 3:
+        errors.append(f"phi thuyền: gõ đúng pinyin nhưng không bắn hạ được (bắn được {shot_ok})")
+    else:
+        print(f"✅ Phi thuyền: gõ pinyin bắn hạ được thiên thạch ({shot_ok} viên)")
+
+    # gõ sai thì không bắn được viên nào
+    before = len(page.query_selector_all(".meteor"))
+    page.fill(".type-bar", "xxxyyy")
+    time.sleep(0.6)
+    if len(page.query_selector_all(".meteor")) < before:
+        errors.append("phi thuyền: gõ sai pinyin vẫn bắn trúng")
+    else:
+        print("✅ Phi thuyền: gõ sai thì không bắn được")
+
+    # ------------------------------- 2c-quater. Luyện phát âm (giả lập micro)
+    SPEECH = """
+    window.__saidText = '';
+    class FakeRec {
+      constructor() { this.lang = ''; this.onresult = null; this.onerror = null; this.onend = null; }
+      start() {
+        const said = window.__saidText;
+        setTimeout(() => {
+          if (said === '__ERR__') { this.onerror && this.onerror({ error: 'no-speech' }); }
+          else {
+            const res = [{ transcript: said, confidence: 0.9 }];
+            res.length = 1;
+            this.onresult && this.onresult({ results: [res] });
+          }
+          this.onend && this.onend();
+        }, 120);
+      }
+      stop() {}
+      abort() {}
+    }
+    window.SpeechRecognition = FakeRec;
+    """
+    sctx = b.new_context(viewport={"width": 1280, "height": 900})
+    spg = sctx.new_page()
+    spg.add_init_script(ROSTER)
+    spg.add_init_script(SPEECH)
+    spg.goto(BASE, wait_until="networkidle"); time.sleep(0.8)
+    spg.fill("input[placeholder*='Nguyễn']", "Trò Nói")
+    spg.fill("input[placeholder*='TH2001']", "TN1101")
+    spg.click("button:has-text('Bắt đầu học')")
+    spg.wait_for_url("**/hoc", timeout=8000); time.sleep(0.8)
+
+    spg.goto(f"{BASE}/choi/tn1101-1-5/phatam", wait_until="networkidle")
+    time.sleep(1.5)
+    snap(spg, "12b-phatam", full=True)
+    if not spg.query_selector("button:has-text('Nói lại')"):
+        errors.append("phát âm: không dựng được màn luyện phát âm")
+    else:
+        print("✅ Luyện phát âm: dựng được màn hình nghe mẫu + micro")
+
+    def target_text(pg):
+        return pg.inner_text(".q-hz, .q-hz-sm").strip()
+
+    # Nói đúng y hệt → phải được chấm chuẩn và sang câu sau
+    first = target_text(spg)
+    spg.evaluate("t => window.__saidText = t", first)
+    spg.click("button:has-text('Nói lại')")
+    time.sleep(2.4)
+    body = spg.content()
+    if "Rất chuẩn" not in body and target_text(spg) == first:
+        errors.append("phát âm: nói đúng nhưng không được chấm đạt")
+    else:
+        print("✅ Luyện phát âm: nói đúng → chấm 'rất chuẩn' và sang câu sau")
+
+    # Nói sai 2 lần → vẫn chuyển câu, không bị kẹt
+    second = target_text(spg)
+    spg.evaluate("() => window.__saidText = '天气很好啊'")
+    spg.click("button:has-text('Nói lại')")
+    time.sleep(2.2)
+    mid = spg.content()
+    if "%" not in mid:
+        errors.append("phát âm: không hiện tỉ lệ giống sau khi nói")
+    spg.click("button:has-text('Nói lại'), button:has-text('Thử lại lần nữa')")
+    time.sleep(3.0)
+    if target_text(spg) == second:
+        errors.append("phát âm: nói sai 2 lần vẫn kẹt lại ở một câu")
+    else:
+        print("✅ Luyện phát âm: nói chưa đúng thì được thử lại rồi mới sang câu khác")
+    snap(spg, "12c-phatam-score", full=True)
+    sctx.close()
 
     # ------------------------------- 2d. Bảng số 1–99
     page.goto(f"{BASE}/bang-so", wait_until="networkidle")
@@ -426,7 +608,9 @@ with sync_playwright() as p:
     stu.close(); stu2.close()
 
     # ---------------------------------------------------- 9. Mobile
-    m = b.new_page(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
+    mctx = b.new_context(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
+    mctx.add_init_script(ROSTER)
+    m = mctx.new_page()
     m.goto(BASE, wait_until="networkidle"); time.sleep(1)
     m.screenshot(path=f"{SHOTS}/22-mobile-login.png")
     m.fill("input[placeholder*='Nguyễn']", "Trần Bảo Ngọc")

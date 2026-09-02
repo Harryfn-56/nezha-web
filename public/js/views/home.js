@@ -34,7 +34,7 @@ export async function view() {
 
   /* --------------------------------------------------------- chọn bài */
   const lessonPicker = el('select.input', {
-    style: { maxWidth: '330px' },
+    style: { maxWidth: '440px', minWidth: '260px' },
     onchange: (e) => {
       localStorage.setItem(LESSON_KEY, e.target.value);
       view();

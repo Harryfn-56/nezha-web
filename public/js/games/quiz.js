@@ -6,7 +6,7 @@
 
 import { el, shuffle, sample, sleep, speak } from '../core.js';
 import { CONFIG } from '../config.js';
-import { Shell, timeScore } from './shell.js';
+import { Shell, timeScore, distractors } from './shell.js';
 
 const MODES = ['hz2vi', 'vi2hz', 'hz2py'];
 
@@ -21,11 +21,12 @@ export function play(game, lesson, container) {
   let locked = false;
 
   function buildQuestion(word, mode) {
-    const others = shuffle(words.filter((w) => w.hz !== word.hz));
+    // Đáp án nhiễu không được trùng nghĩa / trùng pinyin với đáp án đúng
+    const others = distractors(words, word, 3, mode === 'hz2py' ? 'py' : 'vi');
     if (mode === 'vi2hz') {
       return {
         prompt: el('div', {}, [
-          el('div.lbl', {}, 'Từ nào có nghĩa là'),
+          el('div.lbl', {}, 'Từ nào có nghĩa là:'),
           el('div.q-vi', {}, `“${word.vi}”`),
         ]),
         options: shuffle([word, ...others.slice(0, 3)]),

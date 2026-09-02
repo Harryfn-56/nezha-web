@@ -10,6 +10,7 @@ import {
   currentUser, allScores, summarise, listClasses, addClass, removeClass,
   listLessons, saveLesson, deleteLesson, pingCloud, CLOUD,
   listTeachers, saveTeacher, removeTeacher, canSeeClass, assignClassToSelf,
+  listStudents, addStudent, addStudents, removeStudent,
 } from '../store.js';
 import { extractText, parseVocab, buildLesson } from '../importer.js';
 import { page } from './layout.js';
@@ -23,6 +24,7 @@ export async function view() {
 
   const tabs = [
     ['scores', '📊 Bảng điểm'],
+    ['students', '🎒 Học sinh'],
     ['classes', '🏫 Lớp học'],
     ['lessons', '📚 Bài học'],
     ...(isAdmin ? [['teachers', '👩‍🏫 Giáo viên'], ['cloud', '☁️ Kết nối']] : []),
@@ -45,6 +47,7 @@ export async function view() {
   function draw() {
     clear(panel);
     if (tab === 'scores') renderScores(panel, u);
+    else if (tab === 'students') renderStudents(panel, u);
     else if (tab === 'classes') renderClasses(panel, u);
     else if (tab === 'lessons') renderLessons(panel);
     else if (tab === 'teachers') renderTeachers(panel);
@@ -205,6 +208,140 @@ function exportCsv(rows) {
   const a = el('a', { href: URL.createObjectURL(blob), download: `diem-nezha-${Date.now()}.csv` });
   a.click();
   toast('Đã tải file CSV', 'ok');
+}
+
+/* ==================================================================== */
+/*  Thẻ — Danh sách học sinh (chỉ giáo viên được thêm tài khoản)        */
+/* ==================================================================== */
+
+const STU_CLASS_KEY = 'nz_admin_class';
+
+async function renderStudents(host, user) {
+  const all = await listClasses();
+  const classes = all.filter((c) => canSeeClass(user, c.code));
+
+  if (!classes.length) {
+    clear(host);
+    host.append(el('div.card.empty', {}, [
+      el('div.ic', {}, '🏫'),
+      el('div.bold', {}, 'Chưa có lớp nào'),
+      el('div.small', {}, 'Sang thẻ "🏫 Lớp học" để tạo lớp trước, rồi quay lại đây thêm học sinh.'),
+    ]));
+    return;
+  }
+
+  let code = sessionStorage.getItem(STU_CLASS_KEY) || '';
+  if (!classes.some((c) => c.code === code)) code = classes[0].code;
+
+  const students = await listStudents(code);
+  const oneName = el('input.input', { placeholder: 'VD: Nguyễn Minh An' });
+  const bulk = el('textarea.input', {
+    rows: 6,
+    placeholder: 'Dán cả danh sách vào đây, mỗi dòng một tên:\n\nNguyễn Minh An\nTrần Bảo Ngọc\nLê Gia Hân',
+  });
+
+  const classSel = el('select.input', {
+    style: { maxWidth: '280px' },
+    onchange: (e) => {
+      sessionStorage.setItem(STU_CLASS_KEY, e.target.value);
+      renderStudents(host, user);
+    },
+  }, classes.map((c) => el('option', {
+    value: c.code, selected: c.code === code ? true : null,
+  }, `${c.code} — ${c.name}`)));
+
+  clear(host);
+  host.append(
+    el('div.alert.alert-info', { style: { marginBottom: '16px' } }, [
+      el('div.bold', {}, '🔐 Chỉ học sinh có tên trong danh sách này mới đăng nhập được'),
+      el('div.small', {}, 'Học sinh gõ đúng họ tên (không cần đúng dấu) + mã lớp là vào học. Tên lạ sẽ bị từ chối, nên không ai tự tạo tài khoản để chơi trước xem đáp án.'),
+    ]),
+
+    el('div.row.wrapf', { style: { marginBottom: '16px', alignItems: 'flex-end' } }, [
+      el('label.field', { style: { marginBottom: 0 } }, [el('span', {}, 'Đang xem lớp'), classSel]),
+      el('span.chip', {}, `${students.length} học sinh`),
+    ]),
+
+    el('div.card', { style: { marginBottom: '18px' } }, [
+      el('h3', {}, '➕ Thêm học sinh'),
+      el('div.row.wrapf', { style: { alignItems: 'flex-end' } }, [
+        el('label.field.grow', { style: { marginBottom: 0, minWidth: '220px' } },
+          [el('span', {}, 'Họ và tên'), oneName]),
+        el('button.btn', {
+          onclick: async () => {
+            try {
+              const r = await addStudent(code, oneName.value);
+              toast(`Đã thêm ${r.name} vào lớp ${code}`, 'ok');
+              renderStudents(host, user);
+            } catch (e) { toast(e.message, 'bad'); }
+          },
+        }, 'Thêm'),
+      ]),
+
+      el('div.row', { style: { margin: '16px 0 8px' } }, [
+        el('div', { style: { flex: 1, height: '1px', background: 'var(--line)' } }),
+        el('span.small.muted', {}, 'hoặc thêm cả danh sách'),
+        el('div', { style: { flex: 1, height: '1px', background: 'var(--line)' } }),
+      ]),
+
+      el('label.field', {}, [el('span', {}, 'Dán danh sách lớp'), bulk]),
+      el('button.btn.btn-block', {
+        onclick: async () => {
+          if (!bulk.value.trim()) return toast('Chưa có tên nào', 'bad');
+          const added = await addStudents(code, bulk.value);
+          toast(`Đã thêm ${added.length} học sinh vào lớp ${code}`, 'ok');
+          renderStudents(host, user);
+        },
+      }, '📋 Thêm cả danh sách'),
+    ]),
+
+    el('div.sec-title', {}, [el('h2', {}, `🎒 Học sinh lớp ${code}`), el('div.ln')]),
+
+    students.length ? el('div.tbl-wrap', {}, el('table.tbl', {}, [
+      el('thead', {}, el('tr', {}, [
+        el('th', { style: { width: '52px' } }, '#'),
+        el('th', {}, 'Họ và tên'),
+        el('th', {}, 'Đăng nhập bằng'),
+        el('th', {}, ''),
+      ])),
+      el('tbody', {}, students.map((s, i) => el('tr', {}, [
+        el('td', {}, String(i + 1)),
+        el('td.bold', {}, s.name),
+        el('td.small.muted', {}, `${s.name} + ${code}`),
+        el('td', {}, el('button.btn.btn-plain.btn-sm', {
+          onclick: async () => {
+            if (!confirm(`Xoá ${s.name} khỏi lớp ${code}? Em này sẽ không đăng nhập được nữa.`)) return;
+            await removeStudent(s.id);
+            toast('Đã xoá ' + s.name);
+            renderStudents(host, user);
+          },
+        }, '🗑️')),
+      ]))),
+    ])) : el('div.card.empty', {}, [
+      el('div.ic', {}, '🎒'),
+      el('div.bold', {}, 'Lớp này chưa có học sinh nào'),
+      el('div.small', {}, 'Chưa thêm tên thì chưa em nào đăng nhập được. Dán danh sách lớp vào ô phía trên là nhanh nhất.'),
+    ]),
+
+    students.length ? el('div.row.wrapf', { style: { marginTop: '14px' } }, [
+      el('button.btn.btn-ghost.btn-sm', {
+        onclick: () => exportStudentsCsv(code, students),
+      }, '⬇️ Tải danh sách (CSV)'),
+      el('button.btn.btn-ghost.btn-sm', { onclick: () => window.print() }, '🖨️ In danh sách'),
+    ]) : null,
+
+    !CLOUD ? el('div.alert', { style: { marginTop: '16px' } },
+      '⚠️ Đang ở chế độ ngoại tuyến: danh sách này chỉ nằm trên máy đang dùng, máy của học sinh chưa thấy. Bật Supabase ở thẻ "Kết nối" để cả trung tâm dùng chung.') : null,
+  );
+}
+
+function exportStudentsCsv(code, students) {
+  const lines = ['STT,Họ và tên,Mã lớp'];
+  students.forEach((s, i) => lines.push(`${i + 1},"${s.name}",${code}`));
+  const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = el('a', { href: URL.createObjectURL(blob), download: `hoc-sinh-${code}.csv` });
+  a.click();
+  toast('Đã tải danh sách lớp ' + code, 'ok');
 }
 
 /* ==================================================================== */

@@ -63,7 +63,7 @@ export function view() {
       el('label.field', {}, [
         el('span', {}, 'Mã lớp (thầy/cô cho em)'),
         code,
-        el('div.hint', {}, 'Mã lớp cũng chính là mật khẩu của em'),
+        el('div.hint', {}, 'Gõ đúng họ tên thầy/cô đã ghi trong danh sách lớp — không cần đúng dấu.'),
       ]),
       btn,
       el('div.hint.tcenter', { style: { marginTop: '16px' } }, [

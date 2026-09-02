@@ -40,6 +40,7 @@ export const LESSONS = [
       { hz: '再见', py: 'zàijiàn', vi: 'tạm biệt', tag: 'Chào hỏi' },
 
       /* --- Số đếm ----------------------------------------------------- */
+      { hz: '零', py: 'líng', vi: 'không (0)', tag: 'Số đếm' },
       { hz: '一', py: 'yī', vi: 'một (1)', tag: 'Số đếm' },
       { hz: '二', py: 'èr', vi: 'hai (2)', tag: 'Số đếm' },
       { hz: '三', py: 'sān', vi: 'ba (3)', tag: 'Số đếm' },
@@ -238,7 +239,7 @@ export const GAMES = [
     id: 'datequiz',
     name: 'Ngày tháng NeZha',
     cn: '日期',
-    desc: 'Đổi ngày tháng năm sang tiếng Trung: 2026/8/11 → 二零二六年八月十一号',
+    desc: 'Đổi ngày tháng năm sang tiếng Trung: 11/8/2026 → 2026年8月11号',
     icon: '📅',
     color: 'teal',
     skill: 'Vận dụng',
@@ -251,6 +252,24 @@ export const GAMES = [
     icon: '✍️',
     color: 'blue',
     skill: 'Viết chữ',
+  },
+  {
+    id: 'phatam',
+    name: 'Luyện phát âm',
+    cn: '发音练习',
+    desc: 'Nghe mẫu rồi nói lại, máy chấm điểm phát âm từng từ và cả câu',
+    icon: '🎤',
+    color: 'purple',
+    skill: 'Phát âm',
+  },
+  {
+    id: 'phithuyen',
+    name: 'Phi thuyền bắn thiên thạch',
+    cn: '打字飞船',
+    desc: 'Chữ Hán rơi như thiên thạch — gõ pinyin thật nhanh để bắn hạ',
+    icon: '🚀',
+    color: 'teal',
+    skill: 'Gõ pinyin',
   },
   {
     id: 'rush',

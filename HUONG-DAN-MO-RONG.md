@@ -155,6 +155,27 @@ Hoặc sửa mảng `classes` trong `public/js/config.js` để lớp có sẵn 
 
 ---
 
+## Danh sách học sinh — ai được vào học
+
+**Chỉ giáo viên tạo được tài khoản học sinh.** Học sinh không tự đăng ký được,
+nên không có chuyện một em tạo nhiều tên khác nhau để chơi trước xem đáp án.
+
+**Quản trị → 🎒 Học sinh** → chọn lớp → thêm từng em, hoặc **dán cả danh sách**
+(mỗi dòng một tên) rồi bấm *Thêm cả danh sách*.
+
+Học sinh đăng nhập bằng **họ tên + mã lớp**:
+
+- Tên phải có trong danh sách của lớp đó, sai tên là không vào được
+- Gõ **không dấu vẫn được** (`nguyen minh an` = `Nguyễn Minh An`), hoa/thường tuỳ ý
+- Lớp chưa có danh sách thì chưa em nào vào được — web sẽ báo rõ để em đi hỏi thầy/cô
+
+Trong bảng có nút **⬇️ Tải danh sách (CSV)** và **🖨️ In danh sách** để phát cho lớp.
+
+> ⚠️ Chưa bật Supabase thì danh sách chỉ nằm trên máy đã nhập. Muốn học sinh
+> đăng nhập từ máy/điện thoại của các em thì phải bật Supabase (xem mục bên dưới).
+
+---
+
 ## Tài khoản cho nhiều giáo viên
 
 Website có 2 loại tài khoản:
@@ -493,3 +514,114 @@ Ngay trên trang chính của học sinh, dưới phần chọn trò chơi:
 
 > Bảng chỉ hiện đủ cả lớp khi đã bật Supabase. Chưa bật thì mỗi máy chỉ thấy dữ
 > liệu của chính máy đó.
+
+---
+
+# G. Ba chức năng mới (bản 1.3)
+
+## 🎤 Luyện phát âm có chấm điểm
+
+Nghe máy đọc mẫu → bấm micro đọc lại → máy chấm điểm. Có **cả từ lẻ lẫn câu
+hoàn chỉnh** (khoảng 40% số lượt là câu, lấy từ phần mẫu câu của bài).
+
+Cách chấm: dùng bộ nhận diện giọng nói tiếng Trung của trình duyệt, so câu máy
+nghe được với câu mẫu theo từng chữ:
+
+| Tỉ lệ giống | Kết quả |
+|---|---|
+| ≥ 85% | ✔ Rất chuẩn — được điểm tối đa, sang câu mới luôn |
+| 60–84% | Tạm được — nhắc nghe lại mẫu |
+| < 60% | Chưa đúng — cho thử lại, mỗi câu 2 lần, lấy lần tốt nhất |
+
+Chỉnh 3 con số này ở `config.js` → `game.speakItems`, `speakGoodPercent`,
+`speakPassPercent`.
+
+> Cần **Chrome hoặc Edge, có micro và có mạng**. Máy nào không hỗ trợ thì trò tự
+> chuyển sang **chế độ tự nghe lại**: thu âm giọng của em rồi phát lại ngay cạnh
+> giọng mẫu để em tự so — vẫn luyện được, chỉ là không có điểm tự động.
+
+## 🚀 Phi thuyền bắn thiên thạch
+
+Chữ Hán rơi xuống như thiên thạch, **nhiều viên cùng lúc**. Học sinh gõ pinyin
+(không cần dấu thanh) để bắn hạ. Viên nào chạm đất thì mất 1 mạng, hết 3 mạng
+là kết thúc.
+
+Độ khó tăng dần giống Na Tra đại chiến — cứ 6 viên bắn trúng thì lên 1 cấp:
+
+| Cấp | Thời gian rơi | Số viên cùng lúc |
+|---|---|---|
+| 1 | 9.0 giây | 2 |
+| 3 | 6.7 giây | 3 |
+| 5 | 5.0 giây | 4 |
+| 7 trở đi | 3.0 giây | 5 |
+
+Sửa ở `config.js` → `game.shipStartSeconds`, `shipLevelEvery`, `shipSpeedUp`,
+`shipMinSeconds`, `shipMaxMeteors`, `shipLives`.
+
+## Soát lại nội dung 11 trò chơi
+
+Đã rà lại toàn bộ nội dung và sửa mấy chỗ dễ gây oan cho học sinh:
+
+- **Từ đồng âm không còn đứng chung câu hỏi**: 他 và 她 cùng đọc "tā" nên trước
+  đây trò *Nghe chọn từ* có thể cho cả hai vào 4 đáp án — nghe đúng vẫn bị chấm
+  sai. Nay đáp án nhiễu luôn khác cách đọc (và khác nghĩa ở các trò hỏi nghĩa).
+- **Trò Ghép cặp** không lấy 2 từ trùng nghĩa vào cùng một ván.
+- **Phi thuyền** không thả 2 thiên thạch cùng pinyin cùng lúc.
+- Bổ sung chữ **零 (líng — số 0)** vào từ vựng vì câu "我二零一五年出生。" có dùng.
+- Sửa mô tả trò *Ngày tháng NeZha* cho khớp đúng dạng câu hỏi trong trò
+  (`11/8/2026 → 2026年8月11号`).
+
+---
+
+# H. Bản 1.4 — giao diện mới và sửa lỗi đồng hồ Kahoot
+
+## Đã sửa: học sinh bị hụt thời gian trong phòng Kahoot
+
+**Hiện tượng:** thầy/cô để 20 giây nhưng có em vào chỉ còn 5 giây, em khác lại
+bình thường.
+
+**Nguyên nhân:** phòng thi lưu mốc "câu hỏi bắt đầu lúc mấy giờ". Trước đây máy
+học sinh lấy **giờ của chính máy đó** để trừ ra thời gian còn lại. Điện thoại /
+máy tính nào bị lệch giờ (chạy nhanh 15 giây) thì đồng hồ hụt đúng 15 giây —
+nên chỉ những em có máy sai giờ mới bị.
+
+**Cách sửa:** mọi mốc thời gian trong phòng Kahoot nay tính theo **giờ máy chủ**.
+Website tự đo độ lệch giữa máy đang dùng và máy chủ (đọc giờ trong phần đầu mỗi
+lần gọi Supabase) rồi bù lại. Máy học sinh có sai giờ vẫn được đủ thời gian.
+
+Kèm theo:
+
+- Máy học sinh giờ có **đồng hồ đếm ngược bằng số** (trước chỉ có thanh chạy)
+- Máy nào lệch giờ trên 20 giây sẽ được nhắc nhẹ ở phòng chờ để chỉnh lại
+- **Lỡ thoát / tải lại trang giữa chừng thì tự vào lại đúng phòng**, giữ nguyên điểm
+- Hai bạn **trùng tên** trong một phòng sẽ tự thành "Tên" và "Tên (2)" cho khỏi lẫn điểm
+
+### Cách tự kiểm tra lại phòng Kahoot
+
+Dự án có sẵn một máy chủ Supabase giả để thử nhiều máy ngay trên 1 máy tính:
+
+```bash
+node scripts/dev-server.js        # cửa sổ 1 — website
+node scripts/fake-supabase.js     # cửa sổ 2 — máy chủ giả
+python3 scripts/test-kahoot-clock.py   # cửa sổ 3 — chạy kiểm thử
+```
+
+Bài kiểm thử này giả lập một máy học sinh **chạy nhanh 15 giây** và kiểm tra
+đồng hồ vẫn còn ~19 giây. (Chạy với mã nguồn cũ thì con số rơi xuống 3–5 giây.)
+
+## Giao diện được nâng cấp
+
+- **Viền mềm bằng bóng đổ nhiều lớp** thay cho viền 1px cứng ở thẻ, bảng, ô nhập
+- **Xuất hiện có nhịp**: các thẻ trò chơi và ô thống kê hiện lên lần lượt, mờ dần vào
+- **Bấm là lún**: thẻ trò chơi và đáp án Kahoot có phản hồi khi chạm
+- **Số liệu cân đều** (tabular numbers) — điểm, đồng hồ, bảng điểm không bị nhảy chữ
+- **Vùng bấm tối thiểu 40–44px** cho nút nhỏ, dễ bấm trên điện thoại
+- Vòng sáng khi dùng bàn phím, chữ mượt hơn trên máy Mac, tiêu đề tự cân dòng
+- Màn hình kết quả có vệt sáng chạy ngang cho ra chất ăn mừng
+
+> Ghi chú kỹ thuật: hai bộ thư viện Watermelon UI và motion-primitives đều là
+> component React + Tailwind, trong khi website này cố ý viết thuần JavaScript
+> không phụ thuộc thư viện (để chạy được trên mọi hosting rẻ tiền và tải nhanh
+> trên wifi lớp học). Vì vậy phần nâng cấp trên áp dụng **nguyên tắc thiết kế**
+> của các bộ đó bằng CSS thuần, không kéo React vào dự án.
+

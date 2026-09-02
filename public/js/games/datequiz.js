@@ -42,7 +42,7 @@ function makeQuestion(kind) {
     const wrongs = shuffle([...Array(12).keys()].map((k) => k + 1).filter((x) => x !== m))
       .slice(0, 3).map(MONTH_HZ);
     return {
-      lbl: 'Tháng này viết bằng chữ Hán là',
+      lbl: 'Tháng này viết bằng chữ Hán là:',
       big: `Tháng ${m}`,
       bigClass: 'q-vi',
       right,
@@ -62,7 +62,7 @@ function makeQuestion(kind) {
       if (w !== right) wrongs.add(w);
     }
     return {
-      lbl: 'Năm sinh này đọc bằng chữ Hán là',
+      lbl: 'Năm sinh này đọc bằng chữ Hán là:',
       big: `${y} 年`,
       bigClass: 'q-vi',
       right,
