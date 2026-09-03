@@ -154,10 +154,30 @@ export class Shell {
       correct: this.correct,
       total: this.answered || this.total,
       durationMs,
+      wrongWords: this.wrongWords(),
       ...extra,
     };
     try { await saveScore(result); } catch (e) { console.warn(e); }
     this.showResult(result);
+  }
+
+  /**
+   * Danh sách từ trả lời SAI trong lượt này — gửi kèm điểm để trang Quản trị
+   * thống kê được "học sinh hay sai ở đâu". Gộp trùng, cắt tối đa 40 từ cho
+   * bản ghi khỏi phình to.
+   */
+  wrongWords() {
+    const seen = new Map();
+    for (const x of this.review) {
+      if (x.ok) continue;
+      const hz = String(x.hz || '').trim();
+      if (!hz) continue;
+      if (!seen.has(hz)) {
+        seen.set(hz, { hz, py: String(x.py || ''), vi: String(x.vi || ''), n: 0 });
+      }
+      seen.get(hz).n++;
+    }
+    return Array.from(seen.values()).slice(0, 40);
   }
 
   showResult(r) {

@@ -3,11 +3,11 @@
  * 4 thẻ: Bảng điểm · Lớp học · Bài học (tải file Word/PDF) · Kết nối
  */
 
-import { el, mount, go, toast, fmtDate, clear } from '../core.js';
+import { el, mount, go, toast, fmtDate, clear, append } from '../core.js';
 import { GAMES } from '../data.js';
 import { CONFIG } from '../config.js';
 import {
-  currentUser, allScores, summarise, listClasses, addClass, removeClass,
+  currentUser, allScores, buildReport, listClasses, addClass, removeClass,
   listLessons, saveLesson, deleteLesson, pingCloud, CLOUD,
   listTeachers, saveTeacher, removeTeacher, canSeeClass, assignClassToSelf,
   listStudents, addStudent, addStudents, removeStudent,
@@ -76,14 +76,24 @@ export async function view() {
 /*  Thẻ 1 — Bảng điểm                                                   */
 /* ==================================================================== */
 
+const PERIODS = [
+  ['', 'Từ trước tới nay'],
+  ['7', '7 ngày gần đây'],
+  ['30', '30 ngày gần đây'],
+  ['1', 'Hôm nay'],
+];
+
 async function renderScores(host, user) {
   host.append(el('div.card.center', { style: { minHeight: '120px' } }, 'Đang tải dữ liệu...'));
 
-  const [allClasses, allRows] = await Promise.all([listClasses(), allScores()]);
+  const [allClasses, allRows, allStudents] = await Promise.all([
+    listClasses(), allScores(), listStudents(),
+  ]);
 
   // Giáo viên thường chỉ thấy lớp mình phụ trách
   const classes = allClasses.filter((c) => canSeeClass(user, c.code));
   const rows = allRows.filter((r) => canSeeClass(user, r.class_code));
+  const roster = allStudents.filter((s) => canSeeClass(user, s.class_code));
 
   if (!user.isAdmin && !classes.length) {
     clear(host);
@@ -97,34 +107,152 @@ async function renderScores(host, user) {
 
   let filterClass = '';
   let filterGame = '';
+  let filterDays = '';
+  let filterStudent = '';        // '' = cả lớp, hoặc id của 1 em
 
   const body = el('div');
+  const studentSel = el('select.input', {
+    style: { maxWidth: '260px' },
+    onchange: (e) => { filterStudent = e.target.value; refresh(); },
+  });
+
+  /**
+   * Danh sách em có thể chọn: danh sách lớp + những em có điểm nhưng không
+   * còn trong danh sách (bị đổi tên/xoá tên) để thầy/cô vẫn xem lại được.
+   */
+  function pickList() {
+    const inScope = (code) => !filterClass || code === filterClass;
+    const map = new Map();
+    for (const s of roster) {
+      if (inScope(s.class_code)) map.set(s.id, s);
+    }
+    for (const r of rows) {
+      if (!inScope(r.class_code) || map.has(r.student_id)) continue;
+      map.set(r.student_id, { id: r.student_id, name: r.student_name, class_code: r.class_code });
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+  }
+
+  /** Ô chọn học sinh — chỉ liệt kê các em thuộc lớp đang xem */
+  function fillStudentSel() {
+    const list = pickList();
+    clear(studentSel);
+    const n = roster.filter((s) => !filterClass || s.class_code === filterClass).length;
+    studentSel.append(
+      el('option', { value: '' }, `👥 Cả lớp (${n || list.length} em)`),
+      ...list.map((s) => el('option', {
+        value: s.id, selected: s.id === filterStudent ? true : null,
+      }, `${s.name}${filterClass ? '' : ' — ' + s.class_code}`)),
+    );
+    if (!list.some((s) => s.id === filterStudent)) filterStudent = '';
+  }
 
   function refresh() {
+    fillStudentSel();
+
+    /* --- lọc dữ liệu theo 4 bộ lọc --- */
     let data = rows;
     if (filterClass) data = data.filter((r) => r.class_code === filterClass);
     if (filterGame) data = data.filter((r) => r.game_id === filterGame);
+    if (filterDays) {
+      const from = Date.now() - Number(filterDays) * 24 * 3600 * 1000;
+      data = data.filter((r) => new Date(r.played_at).getTime() >= from);
+    }
 
-    const board = summarise(data);
-    const totalPlays = data.length;
-    const avgAcc = board.length
-      ? Math.round(board.reduce((s, x) => s + x.accuracy, 0) / board.length) : 0;
+    const scopeRoster = roster.filter((s) => !filterClass || s.class_code === filterClass);
+    const me = filterStudent ? pickList().find((s) => s.id === filterStudent) : null;
+    if (me) data = data.filter((r) => r.student_id === me.id || r.student_name === me.name);
+
+    const rep = buildReport(data, me ? [me] : scopeRoster);
+    const board = rep.done;
+    const periodLabel = (PERIODS.find(([v]) => v === filterDays) || PERIODS[0])[1].toLowerCase();
 
     clear(body);
-    body.append(
-      el('div.stat-row', { style: { marginBottom: '18px' } }, [
-        adminStat('🎒', 'Học sinh', String(board.length)),
-        adminStat('🎮', 'Lượt chơi', String(totalPlays)),
-        adminStat('🎯', 'Chính xác TB', avgAcc + '%'),
-        adminStat('🏆', 'Điểm cao nhất', String(board[0] ? board[0].totalScore : 0)),
+    append(body, [
+      me ? studentHeader(me, rep) : classHeader(rep, scopeRoster, periodLabel),
+
+      /* ---------- Ai chưa làm bài ---------- */
+      rep.todo.length ? el('div.card.card-warn', { style: { marginBottom: '18px' } }, [
+        el('div.row-between.wrapf', {}, [
+          el('h3', { style: { marginBottom: '4px' } },
+            `⏳ ${rep.todo.length} em chưa làm bài (${periodLabel})`),
+          el('button.btn.btn-ghost.btn-sm', {
+            onclick: () => copyNames(rep.todo),
+          }, '📋 Chép danh sách'),
+        ]),
+        el('div.row.wrapf', { style: { gap: '7px', marginTop: '8px' } },
+          rep.todo.map((s) => el('span.chip.chip-warn', {},
+            filterClass ? s.name : `${s.name} · ${s.classCode}`))),
+      ]) : (scopeRoster.length && !me ? el('div.alert.alert-ok', { style: { marginBottom: '18px' } },
+        `🎉 Cả ${scopeRoster.length} em trong danh sách đều đã làm bài ${periodLabel}.`) : null),
+
+      /* ---------- Chính xác theo trò chơi ---------- */
+      el('div.sec-title', {}, [
+        el('h2', {}, me ? `🎮 ${me.name} làm từng trò thế nào` : '🎮 Đúng bao nhiêu % ở mỗi trò chơi'),
+        el('div.ln'),
+      ]),
+      rep.byGame.length ? el('div.card', {}, [
+        el('div.small.muted', { style: { marginBottom: '12px' } },
+          'Xếp từ trò làm kém nhất lên trên — đó là chỗ nên ôn thêm.'),
+        ...rep.byGame.map((g) => {
+          const info = GAMES.find((x) => x.id === g.key);
+          return meter(
+            `${info ? info.icon + ' ' + info.name : g.key}`,
+            g.accuracy,
+            `${g.correct}/${g.total} câu · ${g.plays} lượt${me ? '' : ` · ${g.students} em`}`,
+          );
+        }),
+      ]) : el('div.card.empty', {}, [
+        el('div.ic', {}, '🎮'),
+        el('div.bold', {}, 'Chưa có lượt chơi nào trong khoảng này'),
       ]),
 
-      board.length ? el('div.tbl-wrap', {}, el('table.tbl', {}, [
+      /* ---------- Trò chưa thử (chỉ khi xem 1 em) ---------- */
+      me ? untriedGames(rep) : null,
+
+      /* ---------- Hay sai ở đâu ---------- */
+      el('div.sec-title', {}, [el('h2', {}, '❌ Hay sai ở đâu'), el('div.ln')]),
+      rep.mistakes.length ? el('div', {}, [
+        el('div.tbl-wrap', {}, el('table.tbl', {}, [
+          el('thead', {}, el('tr', {}, [
+            el('th', { style: { width: '54px' } }, '#'),
+            el('th', {}, 'Từ'), el('th', {}, 'Pinyin'), el('th', {}, 'Nghĩa'),
+            el('th', {}, 'Số lần sai'),
+            ...(me ? [] : [el('th', {}, 'Bao nhiêu em sai')]),
+            el('th', {}, 'Sai ở trò'),
+          ])),
+          el('tbody', {}, rep.mistakes.slice(0, 25).map((w, i) => el('tr', {}, [
+            el('td.rank', {}, String(i + 1)),
+            el('td', {}, el('span.hz', { style: { fontSize: '1.35rem' } }, w.hz)),
+            el('td.small', {}, w.py || '—'),
+            el('td.bold', {}, w.vi || '—'),
+            el('td.bold', { style: { color: 'var(--bad)' } }, String(w.n)),
+            ...(me ? [] : [el('td', {}, `${w.students} em`)]),
+            el('td', {}, el('div.row.wrapf', { style: { gap: '4px' } },
+              w.games.slice(0, 4).map((id) => {
+                const g = GAMES.find((x) => x.id === id);
+                return el('span.chip.chip-soft', { title: g ? g.name : id }, g ? g.icon : '?');
+              }))),
+          ]))),
+        ])),
+        el('button.btn.btn-ghost.btn-sm', {
+          style: { marginTop: '12px' },
+          onclick: () => exportMistakesCsv(rep.mistakes, me),
+        }, '⬇️ Tải danh sách từ hay sai (CSV)'),
+      ]) : el('div.card.empty', {}, [
+        el('div.ic', {}, '✅'),
+        el('div.bold', {}, 'Chưa ghi nhận từ sai nào'),
+        el('div.small', {}, 'Mục này lấy dữ liệu từ những lượt chơi mới (bản 1.6 trở đi). Các lượt chơi cũ không có chi tiết từ sai nên chưa hiện ở đây.'),
+      ]),
+
+      /* ---------- Bảng điểm học sinh ---------- */
+      me ? null : el('div.sec-title', {}, [el('h2', {}, '🏆 Bảng điểm học sinh'), el('div.ln')]),
+      me ? null : (board.length ? el('div.tbl-wrap', {}, el('table.tbl', {}, [
         el('thead', {}, el('tr', {}, [
           el('th', {}, '#'), el('th', {}, 'Học sinh'), el('th', {}, 'Lớp'),
           el('th', {}, 'Lượt chơi'), el('th', {}, 'Trò đã thử'),
           el('th', {}, 'Câu đúng'), el('th', {}, 'Chính xác'),
-          el('th', {}, 'Tổng điểm'), el('th', {}, 'Lần gần nhất'),
+          el('th', {}, 'Tổng điểm'), el('th', {}, 'Lần gần nhất'), el('th', {}, ''),
         ])),
         el('tbody', {}, board.map((s, i) => el('tr', {}, [
           el('td.rank', {}, i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : String(i + 1)),
@@ -134,10 +262,18 @@ async function renderScores(host, user) {
           el('td', {}, `${s.games}/${GAMES.length}`),
           el('td', {}, `${s.correct}/${s.total}`),
           el('td', {}, el('span', {
-            style: { color: s.accuracy >= 80 ? 'var(--ok)' : s.accuracy >= 60 ? 'var(--orange-600)' : 'var(--bad)', fontWeight: 700 },
+            style: { color: accColor(s.accuracy), fontWeight: 700 },
           }, s.accuracy + '%')),
           el('td.bold', { style: { color: 'var(--red-700)' } }, s.totalScore.toLocaleString('vi-VN')),
           el('td.small.muted', {}, s.last ? fmtDate(s.last) : '—'),
+          el('td', {}, el('button.btn.btn-ghost.btn-sm', {
+            title: `Xem riêng số liệu của ${s.name}`,
+            onclick: () => {
+              filterStudent = s.id;
+              refresh();
+              body.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            },
+          }, '🔍 Xem')),
         ]))),
       ])) : el('div.card.empty', {}, [
         el('div.ic', {}, '📭'),
@@ -145,62 +281,198 @@ async function renderScores(host, user) {
         el('div.small', {},
           CLOUD ? 'Học sinh chơi xong sẽ hiện ở đây.'
                 : 'Đang ở chế độ ngoại tuyến — chỉ thấy dữ liệu trên chính máy này. Bật Supabase ở thẻ "Kết nối" để xem điểm của cả lớp.'),
-      ]),
+      ])),
 
       el('div.row.wrapf', { style: { marginTop: '14px' } }, [
         el('button.btn.btn-ghost.btn-sm', { onclick: () => exportCsv(data) }, '⬇️ Tải file Excel (CSV)'),
         el('button.btn.btn-ghost.btn-sm', { onclick: () => window.print() }, '🖨️ In bảng điểm'),
       ]),
 
-      el('div.sec-title', {}, [el('h2', {}, 'Chi tiết từng lượt chơi'), el('div.ln')]),
+      /* ---------- Chi tiết từng lượt chơi ---------- */
+      el('div.sec-title', {}, [el('h2', {}, '🕒 Chi tiết từng lượt chơi'), el('div.ln')]),
       el('div.tbl-wrap', {}, el('table.tbl', {}, [
         el('thead', {}, el('tr', {}, [
           el('th', {}, 'Thời gian'), el('th', {}, 'Học sinh'), el('th', {}, 'Lớp'),
-          el('th', {}, 'Trò chơi'), el('th', {}, 'Đúng'), el('th', {}, 'Điểm'),
+          el('th', {}, 'Trò chơi'), el('th', {}, 'Đúng'), el('th', {}, 'Điểm'), el('th', {}, 'Từ sai'),
         ])),
         el('tbody', {}, data.slice(0, 100).map((r) => {
           const g = GAMES.find((x) => x.id === r.game_id);
+          const ws = Array.isArray(r.wrong_words) ? r.wrong_words : [];
+          const acc = r.total_count ? Math.round((r.correct_count / r.total_count) * 100) : 0;
           return el('tr', {}, [
             el('td.small.muted', {}, fmtDate(r.played_at)),
             el('td', {}, r.student_name),
             el('td.small', {}, r.class_code),
             el('td', {}, g ? `${g.icon} ${g.name}` : r.game_id),
-            el('td', {}, `${r.correct_count}/${r.total_count}`),
+            el('td', {}, el('span', { style: { color: accColor(acc), fontWeight: 700 } },
+              `${r.correct_count}/${r.total_count}`)),
             el('td.bold', {}, String(r.score)),
+            el('td.small.muted', { style: { maxWidth: '220px' } },
+              ws.length ? ws.slice(0, 6).map((w) => w.hz).join(' ') + (ws.length > 6 ? ' …' : '') : '—'),
           ]);
         })),
       ])),
-    );
+    ]);
   }
 
   clear(host);
   host.append(
-    el('div.row.wrapf', { style: { marginBottom: '16px' } }, [
-      el('select.input', {
-        style: { maxWidth: '220px' },
-        onchange: (e) => { filterClass = e.target.value; refresh(); },
-      }, [el('option', { value: '' }, '🏫 Tất cả lớp'),
-          ...classes.map((c) => el('option', { value: c.code }, `${c.code} — ${c.name}`))]),
-      el('select.input', {
-        style: { maxWidth: '240px' },
-        onchange: (e) => { filterGame = e.target.value; refresh(); },
-      }, [el('option', { value: '' }, '🎮 Tất cả trò chơi'),
-          ...GAMES.map((g) => el('option', { value: g.id }, `${g.icon} ${g.name}`))]),
-    ]),
+    el('div.card', { style: { marginBottom: '18px', padding: '14px 16px' } },
+      el('div.row.wrapf', { style: { alignItems: 'flex-end' } }, [
+        el('label.field', { style: { marginBottom: 0, minWidth: '190px' } }, [
+          el('span', {}, 'Lớp'),
+          el('select.input', {
+            onchange: (e) => { filterClass = e.target.value; filterStudent = ''; refresh(); },
+          }, [el('option', { value: '' }, '🏫 Tất cả lớp'),
+              ...classes.map((c) => el('option', { value: c.code }, `${c.code} — ${c.name}`))]),
+        ]),
+        el('label.field', { style: { marginBottom: 0, minWidth: '210px' } }, [
+          el('span', {}, 'Xem của ai'), studentSel,
+        ]),
+        el('label.field', { style: { marginBottom: 0, minWidth: '200px' } }, [
+          el('span', {}, 'Trò chơi'),
+          el('select.input', {
+            onchange: (e) => { filterGame = e.target.value; refresh(); },
+          }, [el('option', { value: '' }, '🎮 Tất cả trò chơi'),
+              ...GAMES.map((g) => el('option', { value: g.id }, `${g.icon} ${g.name}`))]),
+        ]),
+        el('label.field', { style: { marginBottom: 0, minWidth: '170px' } }, [
+          el('span', {}, 'Khoảng thời gian'),
+          el('select.input', {
+            onchange: (e) => { filterDays = e.target.value; refresh(); },
+          }, PERIODS.map(([v, t]) => el('option', { value: v }, '📅 ' + t))),
+        ]),
+      ])),
     body,
   );
   refresh();
 }
 
+/* ---------- các mảnh giao diện của thẻ Bảng điểm ---------- */
+
+const accColor = (a) =>
+  a >= 80 ? 'var(--ok)' : a >= 60 ? 'var(--orange-600)' : 'var(--bad)';
+
+/** Thanh đo tỉ lệ đúng của 1 trò chơi */
+function meter(label, pct, sub) {
+  return el('div.meter', {}, [
+    el('div.meter-top', {}, [
+      el('span.meter-label', {}, label),
+      el('span.meter-pct', { style: { color: accColor(pct) } }, pct + '%'),
+    ]),
+    el('div.meter-track', {}, el('i', {
+      style: { width: Math.max(2, pct) + '%', background: accColor(pct) },
+    })),
+    el('div.meter-sub', {}, sub),
+  ]);
+}
+
+/** Dải số liệu khi đang xem CẢ LỚP */
+function classHeader(rep, scopeRoster, periodLabel) {
+  const n = scopeRoster.length;
+  const doneN = rep.done.length;
+  const pct = n ? Math.round((doneN / n) * 100) : 0;
+  const weakest = rep.byGame[0];
+  const wName = weakest
+    ? (GAMES.find((g) => g.id === weakest.key) || {}).name || weakest.key : '';
+
+  return el('div', { style: { marginBottom: '18px' } }, [
+    el('div.stat-row', { style: { marginBottom: '14px' } }, [
+      adminStat('✅', 'Đã làm bài', n ? `${doneN}/${n}` : String(doneN)),
+      adminStat('🎮', 'Lượt chơi', String(rep.plays)),
+      adminStat('🎯', 'Chính xác chung', rep.accuracy + '%'),
+      weakest
+        ? adminStat('📉', 'Trò yếu nhất — ' + wName, weakest.accuracy + '%')
+        : adminStat('📉', 'Trò yếu nhất', '—'),
+    ]),
+    n ? el('div.card', { style: { padding: '14px 16px' } }, [
+      el('div.row-between', { style: { marginBottom: '8px' } }, [
+        el('span.bold', {}, `Tiến độ làm bài của lớp`),
+        el('span.bold', { style: { color: accColor(pct) } }, `${pct}%`),
+      ]),
+      el('div.meter-track', { style: { height: '14px' } }, el('i', {
+        style: { width: Math.max(2, pct) + '%', background: accColor(pct) },
+      })),
+      el('div.small.muted', { style: { marginTop: '8px' } },
+        `${doneN} em đã làm · ${rep.todo.length} em chưa làm · tổng ${n} em trong danh sách lớp`),
+    ]) : el('div.alert.alert-info', {},
+      'Chưa nhập danh sách học sinh nên chưa biết em nào chưa làm bài. Sang thẻ "🎒 Học sinh" nhập danh sách lớp trước nhé.'),
+  ]);
+}
+
+/** Dải số liệu khi đang xem RIÊNG 1 EM */
+function studentHeader(me, rep) {
+  const s = rep.done[0];
+  return el('div', { style: { marginBottom: '18px' } }, [
+    el('div.card', { style: { marginBottom: '14px' } }, [
+      el('div.row.wrapf', { style: { alignItems: 'center' } }, [
+        el('div.ic-badge', { style: { fontSize: '1.5rem' } }, '🎒'),
+        el('div.grow', {}, [
+          el('h2', { style: { marginBottom: '2px' } }, me.name),
+          el('div.small.muted', {}, `Lớp ${me.class_code || me.classCode || '—'}`),
+        ]),
+        s ? el('span.chip', {}, `Lần gần nhất: ${s.last ? fmtDate(s.last) : '—'}`)
+          : el('span.chip.chip-warn', {}, '⏳ Chưa làm bài lần nào'),
+      ]),
+    ]),
+    el('div.stat-row', {}, [
+      adminStat('🎮', 'Lượt chơi', String(rep.plays)),
+      adminStat('🎯', 'Chính xác', rep.accuracy + '%'),
+      adminStat('✏️', 'Câu đúng', `${rep.correct}/${rep.total}`),
+      adminStat('🏆', 'Tổng điểm', s ? s.totalScore.toLocaleString('vi-VN') : '0'),
+    ]),
+  ]);
+}
+
+/** Những trò em đó chưa thử lần nào */
+function untriedGames(rep) {
+  const played = new Set(rep.byGame.map((g) => g.key));
+  const left = GAMES.filter((g) => !played.has(g.id));
+  if (!left.length) {
+    return el('div.alert.alert-ok', { style: { marginTop: '12px' } },
+      '🎉 Em này đã thử hết các trò chơi.');
+  }
+  return el('div.card', { style: { marginTop: '12px' } }, [
+    el('div.bold', {}, `🕹️ Chưa thử ${left.length} trò`),
+    el('div.row.wrapf', { style: { gap: '7px', marginTop: '8px' } },
+      left.map((g) => el('span.chip.chip-soft', {}, `${g.icon} ${g.name}`))),
+  ]);
+}
+
+function copyNames(list) {
+  const text = list.map((s) => s.name).join('\n');
+  try {
+    navigator.clipboard.writeText(text);
+    toast(`Đã chép ${list.length} tên vào bộ nhớ tạm`, 'ok');
+  } catch { toast('Trình duyệt không cho chép tự động', 'bad'); }
+}
+
+function exportMistakesCsv(mistakes, me) {
+  const lines = ['STT,Hán tự,Pinyin,Nghĩa,Số lần sai,Số em sai'];
+  mistakes.forEach((w, i) => lines.push(
+    `${i + 1},"${w.hz}","${w.py || ''}","${w.vi || ''}",${w.n},${w.students}`));
+  const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = el('a', {
+    href: URL.createObjectURL(blob),
+    download: `tu-hay-sai-${me ? me.name.replace(/\s+/g, '-') : 'ca-lop'}.csv`,
+  });
+  a.click();
+  toast('Đã tải danh sách từ hay sai', 'ok');
+}
+
 function exportCsv(rows) {
-  const head = ['Thời gian', 'Học sinh', 'Lớp', 'Bài', 'Trò chơi', 'Câu đúng', 'Tổng câu', 'Điểm', 'Giây'];
+  const head = ['Thời gian', 'Học sinh', 'Lớp', 'Bài', 'Trò chơi', 'Câu đúng', 'Tổng câu',
+    '% đúng', 'Điểm', 'Giây', 'Từ sai'];
   const lines = [head.join(',')];
   for (const r of rows) {
     const g = GAMES.find((x) => x.id === r.game_id);
+    const acc = r.total_count ? Math.round((r.correct_count / r.total_count) * 100) : 0;
+    const ws = (Array.isArray(r.wrong_words) ? r.wrong_words : [])
+      .map((w) => w.hz).join(' ');
     lines.push([
       `"${fmtDate(r.played_at)}"`, `"${r.student_name}"`, r.class_code, r.lesson_id,
-      `"${g ? g.name : r.game_id}"`, r.correct_count, r.total_count, r.score,
-      Math.round((r.duration_ms || 0) / 1000),
+      `"${g ? g.name : r.game_id}"`, r.correct_count, r.total_count, acc, r.score,
+      Math.round((r.duration_ms || 0) / 1000), `"${ws}"`,
     ].join(','));
   }
   // BOM để Excel mở đúng tiếng Việt

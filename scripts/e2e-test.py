@@ -457,6 +457,54 @@ with sync_playwright() as p:
     assert "Trang quản trị" in page.content()
     print("✅ Đăng nhập giáo viên OK")
 
+    # ----------------- 6a. Chỉ số theo dõi cho giáo viên (bản 1.6)
+    page.evaluate("""() => {
+      const s = JSON.parse(localStorage.getItem('nz_scores') || '[]');
+      s.push({
+        student_id: 'TN1101::nguyen minh an', student_name: 'Nguyễn Minh An',
+        class_code: 'TN1101', lesson_id: 'tn1101-1-5', game_id: 'quiz',
+        score: 120, max_score: 400, correct_count: 1, total_count: 4, duration_ms: 30000,
+        wrong_words: [{hz:'谢谢', py:'xièxie', vi:'cảm ơn', n:2},
+                      {hz:'再见', py:'zàijiàn', vi:'tạm biệt', n:1}],
+        played_at: new Date().toISOString(),
+      });
+      localStorage.setItem('nz_scores', JSON.stringify(s));
+    }""")
+    page.reload(wait_until="networkidle")
+    time.sleep(1.2)
+    page.click("button:has-text('Bảng điểm')")
+    time.sleep(2.0)
+    snap(page, "14b-admin-analytics", full=True)
+    txt = page.content()
+    for need, label in [("chưa làm bài", "đếm em chưa làm bài"),
+                        ("Trò Viết", "tên em chưa làm bài"),
+                        ("Đúng bao nhiêu %", "bảng % đúng từng trò"),
+                        ("Hay sai ở đâu", "mục hay sai ở đâu"),
+                        ("谢谢", "từ bị sai nhiều nhất"),
+                        ("Tiến độ làm bài", "thanh tiến độ của lớp")]:
+        if need not in txt:
+            errors.append(f"analytics: thiếu {label}")
+    if not [e for e in errors if e.startswith("analytics")]:
+        print("✅ Chỉ số cả lớp: ai chưa làm bài · % đúng từng trò · từ hay sai")
+
+    # Chuyển sang xem riêng 1 học sinh
+    sels = page.query_selector_all("select.input")
+    if len(sels) >= 2:
+        sels[1].select_option(value="TN1101::nguyen minh an")
+        time.sleep(1.5)
+        snap(page, "14c-admin-one-student", full=True)
+        one = page.content()
+        if "Chưa thử" not in one:
+            errors.append("analytics: xem riêng học sinh không hiện 'trò chưa thử'")
+        elif "谢谢" not in one:
+            errors.append("analytics: xem riêng học sinh không hiện từ hay sai")
+        else:
+            print("✅ Xem riêng từng học sinh: số liệu + trò chưa thử + từ hay sai")
+        sels[1].select_option(value="")
+        time.sleep(1.0)
+    else:
+        errors.append("analytics: không thấy ô chọn học sinh")
+
     for tab, shot in [("🏫 Lớp học", "15-admin-classes"),
                       ("📚 Bài học", "16-admin-lessons"),
                       ("☁️ Kết nối", "17-admin-cloud")]:

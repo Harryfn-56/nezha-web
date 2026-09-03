@@ -438,6 +438,8 @@ export async function saveScore(r) {
     correct_count: r.correct,
     total_count: r.total,
     duration_ms: Math.round(r.durationMs || 0),
+    // Những từ em trả lời sai — để thầy/cô biết cả lớp hay vướng ở đâu
+    wrong_words: Array.isArray(r.wrongWords) ? r.wrongWords : [],
     played_at: new Date().toISOString(),
   };
 
@@ -448,7 +450,17 @@ export async function saveScore(r) {
 
   if (CLOUD) {
     try { await sb('scores', { method: 'POST', body: row }); }
-    catch (e) { console.warn('Không gửi được điểm lên cloud:', e.message); }
+    catch (e) {
+      // Bảng scores cũ chưa có cột wrong_words (chưa chạy lại schema.sql)
+      // → gửi lại bản không có cột đó để vẫn lưu được điểm.
+      if (/wrong_words/.test(e.message)) {
+        const { wrong_words, ...plain } = row;
+        try { await sb('scores', { method: 'POST', body: plain }); }
+        catch (e2) { console.warn('Không gửi được điểm lên cloud:', e2.message); }
+      } else {
+        console.warn('Không gửi được điểm lên cloud:', e.message);
+      }
+    }
   }
   return row;
 }
@@ -546,6 +558,108 @@ export function summarise(rows) {
       accuracy: s.total ? Math.round((s.correct / s.total) * 100) : 0,
     }))
     .sort((a, b) => b.totalScore - a.totalScore);
+}
+
+/**
+ * BÁO CÁO CHO GIÁO VIÊN — gom điểm thành các con số dễ đọc.
+ *
+ * @param {Array}  rows    các lượt chơi (đã lọc sẵn theo lớp/trò/khoảng thời gian)
+ * @param {Array}  roster  danh sách học sinh của lớp (bảng students)
+ * @returns {{
+ *   done: Array, todo: Array, extra: Array,
+ *   byGame: Array, byLesson: Array, mistakes: Array,
+ *   plays: number, correct: number, total: number, accuracy: number
+ * }}
+ *   done    — em đã làm bài (kèm số liệu)
+ *   todo    — em CHƯA làm bài lần nào trong khoảng đang xem
+ *   extra   — có điểm nhưng không còn trong danh sách lớp
+ *   byGame  — đúng bao nhiêu % ở từng trò chơi
+ *   mistakes— những từ bị sai nhiều nhất
+ */
+export function buildReport(rows, roster = []) {
+  const board = summarise(rows);
+  const byId = new Map();
+  for (const s of board) {
+    byId.set(s.id, s);
+    byId.set(normName(s.name), s);
+  }
+
+  const done = [];
+  const todo = [];
+  const usedIds = new Set();
+
+  for (const st of roster) {
+    const hit = byId.get(st.id) || byId.get(normName(st.name));
+    if (hit) {
+      usedIds.add(hit.id);
+      done.push({ ...hit, name: st.name, classCode: st.class_code || hit.classCode });
+    } else {
+      todo.push({ id: st.id, name: st.name, classCode: st.class_code || '' });
+    }
+  }
+
+  // Có điểm nhưng không nằm trong danh sách lớp (bị xoá tên, hoặc lớp chưa nhập roster)
+  const extra = board.filter((s) => !usedIds.has(s.id));
+  if (!roster.length) done.push(...extra.map((s) => ({ ...s })));
+
+  done.sort((a, b) => b.totalScore - a.totalScore);
+  todo.sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+
+  /* ---- Đúng bao nhiêu % ở từng trò chơi ---- */
+  const gm = new Map();
+  const lm = new Map();
+  let plays = 0, correct = 0, total = 0;
+
+  for (const r of rows) {
+    plays++;
+    correct += r.correct_count || 0;
+    total += r.total_count || 0;
+
+    for (const [map, key] of [[gm, r.game_id || '?'], [lm, r.lesson_id || '?']]) {
+      if (!map.has(key)) map.set(key, { key, plays: 0, correct: 0, total: 0, score: 0, students: new Set() });
+      const g = map.get(key);
+      g.plays++;
+      g.correct += r.correct_count || 0;
+      g.total += r.total_count || 0;
+      g.score += r.score || 0;
+      g.students.add(r.student_id || r.student_name);
+    }
+  }
+
+  const finish = (m) => Array.from(m.values())
+    .map((g) => ({
+      ...g,
+      students: g.students.size,
+      accuracy: g.total ? Math.round((g.correct / g.total) * 100) : 0,
+    }))
+    .sort((a, b) => a.accuracy - b.accuracy);   // trò yếu nhất lên đầu
+
+  /* ---- Hay sai ở từ nào ---- */
+  const wm = new Map();
+  for (const r of rows) {
+    const list = Array.isArray(r.wrong_words) ? r.wrong_words : [];
+    for (const w of list) {
+      const hz = String(w.hz || '').trim();
+      if (!hz) continue;
+      if (!wm.has(hz)) wm.set(hz, { hz, py: w.py || '', vi: w.vi || '', n: 0, students: new Set(), games: new Set() });
+      const it = wm.get(hz);
+      it.n += Math.max(1, Number(w.n) || 1);
+      it.students.add(r.student_id || r.student_name);
+      it.games.add(r.game_id);
+      if (!it.py && w.py) it.py = w.py;
+      if (!it.vi && w.vi) it.vi = w.vi;
+    }
+  }
+  const mistakes = Array.from(wm.values())
+    .map((w) => ({ ...w, students: w.students.size, games: Array.from(w.games) }))
+    .sort((a, b) => b.n - a.n || b.students - a.students);
+
+  return {
+    done, todo, extra,
+    byGame: finish(gm), byLesson: finish(lm), mistakes,
+    plays, correct, total,
+    accuracy: total ? Math.round((correct / total) * 100) : 0,
+  };
 }
 
 /* ==================================================================== */

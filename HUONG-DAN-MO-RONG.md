@@ -689,3 +689,76 @@ em đã gõ**:
 Viên nào không khớp chữ cái nào thì **không hiện gì cả**. Phi thuyền tự ngắm
 viên mà em đang gõ đúng nhiều chữ nhất.
 
+
+---
+
+# J. Bản 1.6 — Chỉ số theo dõi lớp cho giáo viên
+
+Thẻ **📊 Bảng điểm** trong trang Quản trị nay không chỉ liệt kê điểm, mà trả lời
+được 4 câu hỏi thầy/cô hay hỏi nhất.
+
+## ⚠️ Việc cần làm một lần trước khi dùng
+
+Mục "Hay sai ở đâu" cần thêm **một cột mới** trong Supabase. Vào Supabase →
+**SQL Editor** → dán lại **toàn bộ** file `supabase/schema.sql` → **Run**. Chạy
+lại nhiều lần không sao cả (mọi câu lệnh đều là `if not exists`), dữ liệu cũ
+không mất gì.
+
+Nếu chưa chạy, website vẫn lưu điểm bình thường — chỉ là mục "Hay sai ở đâu"
+chưa có dữ liệu. Các lượt chơi **cũ** cũng không có chi tiết từ sai; mục này chỉ
+đầy dần từ những lượt chơi mới.
+
+## 4 bộ lọc ở đầu thẻ
+
+| Ô | Dùng để |
+|---|---|
+| **Lớp** | Chọn 1 lớp, hoặc xem gộp tất cả các lớp thầy/cô phụ trách |
+| **Xem của ai** | 👥 Cả lớp, hoặc chọn **riêng một em** — mọi số liệu bên dưới đổi theo |
+| **Trò chơi** | Chỉ xem số liệu của một trò |
+| **Khoảng thời gian** | Từ trước tới nay · 7 ngày · 30 ngày · Hôm nay |
+
+Bộ lọc thời gian chính là cách trả lời "buổi hôm nay em nào đã ôn bài rồi?" —
+chọn **Hôm nay** là ra ngay.
+
+## 1) Bao nhiêu em đã làm bài, em nào chưa
+
+- Ô thống kê **✅ Đã làm bài** hiện dạng `12/18` (đã làm / sĩ số trong danh sách).
+- **Thanh tiến độ của lớp** đổi màu: xanh ≥ 80%, cam 60–79%, đỏ dưới 60%.
+- Thẻ vàng **"⏳ … em chưa làm bài"** liệt kê **đích danh từng em**. Nút
+  **📋 Chép danh sách** chép hết tên vào bộ nhớ tạm để dán thẳng vào Zalo nhóm
+  phụ huynh.
+- Cả lớp làm đủ thì thẻ vàng biến mất, thay bằng dòng xanh chúc mừng.
+
+> Muốn mục này chạy đúng thì lớp phải có danh sách học sinh (thẻ **🎒 Học sinh**).
+> Chưa nhập danh sách thì website không biết em nào còn thiếu.
+
+## 2) Đúng bao nhiêu % ở mỗi trò chơi
+
+Mỗi trò một thanh đo, **xếp trò làm kém nhất lên trên** — nhìn phát biết ngay
+nên ôn phần nào. Dưới mỗi thanh ghi rõ `số câu đúng / tổng câu · số lượt · số em`.
+
+## 3) Hay sai ở đâu
+
+Bảng **25 từ bị sai nhiều nhất**, kèm pinyin, nghĩa, **số lần sai**, **bao nhiêu
+em sai** và **sai ở trò nào** (biểu tượng trò chơi). Có nút tải CSV để in ra làm
+phiếu ôn tập.
+
+Cột "bao nhiêu em sai" là cột đáng chú ý nhất: 1 em sai 10 lần là chuyện của em
+đó, còn 10 em cùng sai 1 từ nghĩa là **buổi sau nên giảng lại từ đó**.
+
+## 4) Xem riêng từng em
+
+Chọn tên em ở ô **"Xem của ai"** (hoặc bấm **🔍 Xem riêng** ở bảng điểm):
+
+- Thẻ tên em + lần vào học gần nhất
+- Lượt chơi · % chính xác · số câu đúng · tổng điểm của riêng em
+- % đúng từng trò **của riêng em**
+- **🕹️ Chưa thử N trò** — liệt kê những trò em đó chưa từng mở
+- Những từ **em đó** hay sai
+
+Bấm lại "👥 Cả lớp" để quay về xem toàn lớp.
+
+## Những chỗ khác được bổ sung
+
+- Bảng **Chi tiết từng lượt chơi** có thêm cột **Từ sai** và tô màu ô "Đúng".
+- File CSV tải về có thêm cột **% đúng** và **Từ sai**.

@@ -1213,3 +1213,46 @@ table.tbl th { background: linear-gradient(180deg, #FFF6E9, #FFF1DE); }
   body { background: #fff; }
   .card, .tbl-wrap { box-shadow: none; border: 1px solid #ccc; }
 }
+
+/* ====================================================================
+ * BẢN 1.6 — CHỈ SỐ THEO DÕI CHO GIÁO VIÊN
+ * Thanh đo tỉ lệ đúng, thẻ nhắc học sinh chưa làm bài.
+ * ================================================================== */
+
+.meter { padding: 10px 0; border-bottom: 1px dashed var(--line); }
+.meter:last-child { border-bottom: 0; padding-bottom: 2px; }
+
+.meter-top {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; margin-bottom: 7px;
+}
+.meter-label { font-weight: 700; }
+.meter-pct { font-weight: 800; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+
+.meter-track {
+  height: 11px; border-radius: 99px; overflow: hidden;
+  background: var(--cream-2);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .07);
+}
+.meter-track > i {
+  display: block; height: 100%; border-radius: 99px;
+  transition: width .6s var(--ease-lux);
+}
+
+.meter-sub {
+  margin-top: 6px; font-size: .82rem; color: var(--ink-3, var(--ink-2));
+  font-variant-numeric: tabular-nums;
+}
+
+/* Thẻ cảnh báo "còn em chưa làm bài" */
+.card-warn {
+  border-color: #F3D08A;
+  background: linear-gradient(180deg, #FFF8E9, #FFFDF7);
+}
+.chip-warn {
+  background: #FFF1D6; border-color: #F0CE8E; color: #8A5A11; font-weight: 700;
+}
+
+@media print {
+  .meter-track > i { transition: none; }
+}

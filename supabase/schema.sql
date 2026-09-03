@@ -44,8 +44,14 @@ create table if not exists public.scores (
   correct_count integer not null default 0,
   total_count   integer not null default 0,
   duration_ms   integer not null default 0,
+  -- Những từ học sinh trả lời sai trong lượt đó, dạng
+  -- [{"hz":"你好","py":"nǐ hǎo","vi":"xin chào","n":2}]
+  -- Dùng cho mục "Hay sai ở đâu" trong trang Quản trị.
+  wrong_words   jsonb not null default '[]'::jsonb,
   played_at     timestamptz not null default now()
 );
+-- Bảng cũ (tạo trước bản 1.6) thì thêm cột mới vào:
+alter table public.scores add column if not exists wrong_words jsonb not null default '[]'::jsonb;
 create index if not exists scores_student_idx on public.scores (student_id, played_at desc);
 create index if not exists scores_class_idx   on public.scores (class_code, played_at desc);
 
