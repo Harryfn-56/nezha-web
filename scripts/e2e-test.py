@@ -307,20 +307,25 @@ with sync_playwright() as p:
     SPEECH = """
     window.__saidText = '';
     class FakeRec {
-      constructor() { this.lang = ''; this.onresult = null; this.onerror = null; this.onend = null; }
+      constructor() {
+        this.lang = ''; this.continuous = false; this.interimResults = false;
+        this.maxAlternatives = 1;
+        this.onresult = null; this.onerror = null; this.onend = null;
+      }
       start() {
         const said = window.__saidText;
         setTimeout(() => {
           if (said === '__ERR__') { this.onerror && this.onerror({ error: 'no-speech' }); }
           else {
-            const res = [{ transcript: said, confidence: 0.9 }];
-            res.length = 1;
-            this.onresult && this.onresult({ results: [res] });
+            const r = [{ transcript: said, confidence: 0.9 }];
+            r.length = 1; r.isFinal = true;
+            const results = [r]; results.length = 1;
+            this.onresult && this.onresult({ results });
           }
           this.onend && this.onend();
-        }, 900);
+        }, 600);
       }
-      stop() {}
+      stop() { this.onend && this.onend(); }
       abort() {}
     }
     window.SpeechRecognition = FakeRec;
@@ -358,18 +363,28 @@ with sync_playwright() as p:
     else:
         print("✅ Luyện phát âm: nói đúng → chấm 'rất chuẩn' và sang câu sau")
 
-    # Nói sai 2 lần → vẫn chuyển câu, không bị kẹt
+    # Nói sai nhiều lần → hết lượt thử là chuyển câu, không bị kẹt
     second = target_text(spg)
     spg.evaluate("() => window.__saidText = '天气很好啊'")
     spg.click("button:has-text('Nói lại')")
-    time.sleep(3.4)
+    time.sleep(3.6)
     mid = spg.content()
     if "%" not in mid:
         errors.append("phát âm: không hiện tỉ lệ giống sau khi nói")
-    spg.click("button:has-text('Nói lại'), button:has-text('Thử lại lần nữa')")
-    time.sleep(5.0)
+    if not spg.query_selector(".syl"):
+        errors.append("phát âm: không hiện bảng chấm chi tiết từng chữ")
+    else:
+        print("✅ Luyện phát âm: chấm chi tiết từng chữ (thanh mẫu · vận mẫu · thanh điệu)")
+    for _ in range(4):
+        btn = spg.query_selector("button:has-text('Nói lại'), button:has-text('Thử lại lần nữa')")
+        if not btn:
+            break
+        btn.click()
+        time.sleep(4.6)
+        if target_text(spg) != second:
+            break
     if target_text(spg) == second:
-        errors.append("phát âm: nói sai 2 lần vẫn kẹt lại ở một câu")
+        errors.append("phát âm: nói sai hết lượt vẫn kẹt lại ở một câu")
     else:
         print("✅ Luyện phát âm: nói chưa đúng thì được thử lại rồi mới sang câu khác")
     snap(spg, "12c-phatam-score", full=True)

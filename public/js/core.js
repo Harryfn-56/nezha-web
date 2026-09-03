@@ -43,14 +43,29 @@ export function revealOnScroll(root = document) {
  *   el('div.card', { onclick: f }, 'Nội dung')
  *   el('button.btn.btn-lg', {}, ['Chơi ', el('b', {}, 'ngay')])
  */
+/* Thẻ thuộc thế giới SVG phải tạo bằng createElementNS, nếu không trình
+ * duyệt coi như thẻ lạ và không vẽ ra gì cả. */
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const SVG_TAGS = new Set(['svg', 'path', 'circle', 'ellipse', 'line', 'rect',
+  'polyline', 'polygon', 'g', 'text', 'tspan', 'defs', 'linearGradient',
+  'radialGradient', 'stop', 'clipPath', 'use', 'mask', 'filter']);
+
 export function el(spec, attrs = {}, children = null) {
   const [tagPart, ...classes] = String(spec).split('.');
-  const node = document.createElement(tagPart || 'div');
-  if (classes.length) node.className = classes.join(' ');
+  const tag = tagPart || 'div';
+  const isSvg = SVG_TAGS.has(tag);
+  const node = isSvg ? document.createElementNS(SVG_NS, tag) : document.createElement(tag);
+  if (classes.length) {
+    if (isSvg) node.setAttribute('class', classes.join(' '));
+    else node.className = classes.join(' ');
+  }
 
   for (const [k, v] of Object.entries(attrs || {})) {
     if (v === null || v === undefined || v === false) continue;
-    if (k === 'class') node.className += (node.className ? ' ' : '') + v;
+    if (k === 'class') {
+      const cur = node.getAttribute('class') || '';
+      node.setAttribute('class', cur ? cur + ' ' + v : String(v));
+    }
     else if (k === 'style' && typeof v === 'object') Object.assign(node.style, v);
     else if (k === 'html') node.innerHTML = v;
     else if (k.startsWith('on') && typeof v === 'function') node.addEventListener(k.slice(2), v);

@@ -762,3 +762,87 @@ Bấm lại "👥 Cả lớp" để quay về xem toàn lớp.
 
 - Bảng **Chi tiết từng lượt chơi** có thêm cột **Từ sai** và tô màu ô "Đúng".
 - File CSV tải về có thêm cột **% đúng** và **Từ sai**.
+
+---
+
+# K. Bản 1.7 — Chấm phát âm chi tiết theo từng âm tiết
+
+## Hai lỗi cũ đã sửa
+
+**1. Từ chỉ có 1 chữ thì máy không nghe được.** Ba nguyên nhân, đã sửa cả ba:
+
+| Nguyên nhân | Cách sửa |
+|---|---|
+| Máy tự ngắt ngay khi nghe thấy im lặng, mà từ 1 chữ chỉ dài ~0,3 giây nên chưa kịp nghe đã ngắt | Bật chế độ nghe liên tục; website tự quyết định lúc nào dừng (em đọc xong ~0,8 giây, hoặc bấm nút "⏹️ Xong") |
+| Bản cũ coi mọi kết quả trả về sớm hơn 0,5 giây là "micro nghe nhầm tiếng loa" rồi **vứt đi** — đúng những từ ngắn nhất bị vứt oan | Nay chặn tiếng loa bằng cách **khoá nút micro trong lúc loa đang đọc mẫu** và tắt hẳn loa trước khi mở micro, nên không cần vứt kết quả nữa |
+| Máy nghe không ra chữ là báo "không nghe thấy gì" rồi thôi | Nay vẫn **đo cao độ giọng** để chấm thanh điệu và báo lại cho em; lần đó **không bị tính** là một lượt thử |
+
+**2. Chấm theo chữ nên hay chấm oan.** Tiếng Trung rất nhiều chữ đồng âm: em
+đọc đúng "shī" (师) mà máy ghi ra 十 / 诗 / 是 là bị 0 điểm. Từ 1 chữ bị oan
+nhiều nhất vì máy không có ngữ cảnh để đoán chữ. Nay **so ÂM chứ không so chữ**.
+
+## Cách chấm mới
+
+Mỗi âm tiết được tách làm 3 phần và chấm riêng từng phần:
+
+```
+   hǎo   =    h       +     ao      +   thanh 3
+           thanh mẫu      vận mẫu       (dấu)
+             35%            35%          30%
+```
+
+- **Thanh mẫu / vận mẫu**: lấy chữ máy nghe được → đổi sang pinyin → so âm.
+  Cặp âm dễ lẫn (zh/z, ch/c, sh/s, n/l, an/ang, in/ing, ü/u…) được **nửa số
+  điểm** kèm lời nhắc cụ thể, ví dụ *"Lưỡi phải cong lên khi đọc sh"*.
+- **Thanh điệu**: **đo trực tiếp cao độ giọng của em** chứ không lấy theo chữ.
+  Website thu tiếng, tính tần số giọng 90 lần/giây (cùng nguyên lý máy lên dây
+  đàn), rồi xem đường cong đi lên hay đi xuống để biết em đọc thanh mấy.
+
+> Vì sao phải đo: bộ nhận diện đoán chữ theo ngữ cảnh nên **rất hay sai thanh
+> điệu**. Em đọc đúng `hǎo` mà máy ghi ra 号 (hào) là mất điểm oan. Đo cao độ
+> thì biết chính xác em đọc thanh mấy. Đã kiểm thử với 13 mẫu giọng (giọng
+> cao/thấp, âm tiết ngắn/dài, 1–3 âm tiết): đo đúng 13/13.
+
+## Học sinh nhìn thấy gì
+
+- **Dưới câu mẫu**: từng chữ kèm pinyin, tên thanh điệu và hình dáng lên xuống
+- **Trong lúc đọc**: cột sóng nhấp nháy theo giọng, tự dừng khi đọc xong
+- **Sau khi chấm**: mỗi chữ một thẻ màu (xanh đạt · vàng gần đúng · đỏ sai) với
+  3 dấu 声 (thanh mẫu) · 韵 (vận mẫu) · 调 (thanh điệu), và **đường cao độ**
+  — nét đứt là thanh điệu mẫu, nét liền là giọng em vừa đọc
+- **Tối đa 3 lời nhắc** cụ thể nhất, ví dụ *"住: Sai thanh điệu — cần thanh 4
+  xuống dứt khoát, em đọc thanh 3 xuống rồi lên"*
+- Máy nghe ra chữ đồng âm thì báo rõ *"chữ đồng âm, em đọc đúng rồi!"*
+
+## Thầy/cô chỉnh được gì trong `public/js/config.js`
+
+```js
+speakTries: 3,          // mỗi câu được thử mấy lần (lấy lần cao nhất)
+speakMaxSeconds: 6,     // nghe tối đa bao nhiêu giây rồi tự dừng
+speakUsePitch: true,    // có đo cao độ để chấm thanh điệu không
+speakWeights: { initial: 35, final: 35, tone: 30 },
+```
+
+Muốn siết thanh điệu chặt hơn thì tăng `tone` lên (ví dụ `{initial:30, final:30,
+tone:40}`) — tổng bao nhiêu cũng được, hệ thống tự quy về 100%.
+
+Chữ mang **thanh nhẹ** (的, 吗, 子, 们…) không bị chấm thanh điệu, vì thanh nhẹ
+đọc nhanh và cao độ phụ thuộc chữ đứng trước nên không đo chính xác được.
+
+## Máy không đo được cao độ thì sao?
+
+Máy cũ, hoặc học sinh không cho dùng micro → website tự quay về cách chấm bằng
+chữ như cũ, vẫn chơi được bình thường. Máy không có nhận diện giọng nói (Safari
+cũ, Firefox) vẫn giữ chế độ **tự nghe lại**: thu âm rồi phát lại cạnh giọng mẫu.
+
+## File mới trong dự án
+
+| File | Việc |
+|---|---|
+| `public/js/voice.js` | Thu micro, đo cao độ giọng (F0), cắt âm tiết, đoán thanh điệu |
+| `public/js/pinyin.js` | Cắt pinyin thành thanh mẫu/vận mẫu/thanh điệu, chấm điểm, sinh lời nhắc |
+| `public/js/pinyin-data.js` | Cách đọc của ~450 chữ Hán hay bị máy nghe nhầm (thầy/cô bổ sung được) |
+| `scripts/test-phatam.py` | Kiểm thử riêng phần phát âm bằng file giọng giả lập |
+
+Chữ trong bài học thì **không cần khai báo** ở `pinyin-data.js` — hệ thống tự học
+cách đọc từ chính cột pinyin của bài đó.

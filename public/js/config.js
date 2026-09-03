@@ -93,12 +93,25 @@ export const CONFIG = {
     hanziWriterCdn: 'https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js',
 
     /* --- Luyện phát âm ---------------------------------------------
+     * Máy chấm từng âm tiết theo 3 phần: thanh mẫu (phụ âm đầu) · vận
+     * mẫu (vần) · thanh điệu. Thanh điệu được ĐO từ cao độ giọng thật
+     * của học sinh chứ không lấy theo chữ máy nghe được.
+     *
      * speakItems: mỗi lượt luyện bao nhiêu từ/câu (khoảng 40% là câu)
      * speakGoodPercent: giống bao nhiêu % thì coi là phát âm chuẩn
-     * speakPassPercent: dưới mức này coi như chưa đạt                */
+     * speakPassPercent: dưới mức này coi như chưa đạt
+     * speakTries: mỗi câu được thử mấy lần (lấy lần cao điểm nhất)
+     * speakMaxSeconds: nghe tối đa bao nhiêu giây rồi tự dừng
+     * speakUsePitch: có đo cao độ để chấm thanh điệu không (nên để true)
+     * speakWeights: chia điểm cho 3 phần — tổng bao nhiêu cũng được,
+     *   hệ thống tự quy về 100%. Muốn siết thanh điệu thì tăng tone lên. */
     speakItems: 8,
     speakGoodPercent: 85,     // giống ≥ 85% → phát âm chuẩn, được điểm tối đa
-    speakPassPercent: 70,     // dưới 70% coi như chưa đạt (trước là 60, quá dễ)
+    speakPassPercent: 70,     // dưới 70% coi như chưa đạt
+    speakTries: 3,
+    speakMaxSeconds: 6,
+    speakUsePitch: true,
+    speakWeights: { initial: 35, final: 35, tone: 30 },
 
     /* --- Phi thuyền bắn thiên thạch --------------------------------
      * Giống Na Tra đại chiến: cứ shipLevelEvery viên bắn trúng thì lên
