@@ -282,8 +282,24 @@ export function currentPath() {
   return location.pathname.replace(/\/+$/, '') || '/';
 }
 
+/**
+ * Những trang DÀNH CHO HỌC SINH dùng giao diện "neo" (viền đen dày, bóng
+ * cứng, màu rực — theo bộ Neo Brutalism UI). Trang bài học và trang quản
+ * trị của thầy/cô vẫn giữ giao diện kem mềm cũ cho dễ đọc lâu.
+ *
+ * Cách bật/tắt: sửa danh sách này, hoặc để mảng rỗng là quay về giao diện
+ * cũ cho toàn bộ website.
+ */
+const NEO_PATHS = ['/hoc', '/choi', '/vao-phong', '/bang-so'];
+
+function applySkin(path) {
+  const neo = NEO_PATHS.some((p) => path === p || path.startsWith(p + '/'));
+  document.body.dataset.skin = neo ? 'neo' : '';
+}
+
 export function render() {
   const path = currentPath();
+  applySkin(path);
   for (const r of routes) {
     const params = matchRoute(r.pattern, path);
     if (params) {

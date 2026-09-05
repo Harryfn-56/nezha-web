@@ -846,3 +846,79 @@ cũ, Firefox) vẫn giữ chế độ **tự nghe lại**: thu âm rồi phát l
 
 Chữ trong bài học thì **không cần khai báo** ở `pinyin-data.js` — hệ thống tự học
 cách đọc từ chính cột pinyin của bài đó.
+
+---
+
+# L. Bản 1.8 — Giao diện "Neo" cho phần trò chơi
+
+Lấy theo bộ **Neo Brutalism UI Library** (Figma Community) thầy/cô gửi.
+
+## Công thức của phong cách này
+
+Chỉ có 4 quy tắc, lặp lại ở mọi thành phần:
+
+| | |
+|---|---|
+| Viền | **2px đen `#1A1A1A`** ở mọi thứ |
+| Bóng | **cứng `4px 4px 0` đen** — không mờ, không chuyển sắc |
+| Bo góc | **8px** (vuông vức, không tròn mềm) |
+| Màu | phẳng, rực, **chữ đen** trên nền màu |
+
+Bảng màu lấy đúng từ file Figma:
+
+| Tên | Mã | Dùng cho |
+|---|---|---|
+| Pink | `#FF6B6B` | nút chính, thanh tiến độ |
+| Purple | `#A388EE` | thẻ trò chơi |
+| Green | `#4ECDC4` | nút "đúng", đáp án đúng |
+| Yellow | `#FFE66D` | khối chào mừng, nhãn điểm, mặt trước thẻ lật |
+| Blue | `#45B7D1` | thẻ trò chơi |
+| Orange | `#F7A072` | cảnh báo |
+| Destructive | `#FF4757` | đáp án sai |
+| Nền | `#FDF2E9` | nền cả trang |
+| Chữ/viền | `#1A1A1A` | tất cả |
+
+## Áp ở đâu
+
+**Chỉ trang của học sinh**: trang chính (`/hoc`), 11 trò chơi (`/choi/...`),
+vào phòng Kahoot (`/vao-phong`), bảng số (`/bang-so`).
+
+**Không đụng tới**: trang đăng nhập, trang bài học, trang quản trị và bảng
+điểm của thầy/cô — vẫn giữ giao diện kem mềm cũ, đọc lâu đỡ mỏi mắt.
+
+Cách đổi: mảng `NEO_PATHS` trong `public/js/core.js`.
+
+```js
+const NEO_PATHS = ['/hoc', '/choi', '/vao-phong', '/bang-so'];
+```
+
+- Muốn áp cho **cả website**: thêm `'/'` vào mảng.
+- Muốn **bỏ hẳn**, quay về giao diện cũ: để mảng rỗng `[]`.
+- Muốn chỉ áp cho **một vài trò**: đổi thành `['/choi/tn1101-1-5/rush']` chẳng hạn.
+
+Toàn bộ phần CSS nằm ở cuối `public/css/style.css`, mục
+**"BẢN 1.8 — GIAO DIỆN NEO"**, mọi dòng đều bắt đầu bằng `[data-skin="neo"]`
+nên không ảnh hưởng gì tới giao diện cũ.
+
+## Về font chữ
+
+File Figma dùng **Space Grotesk**. Website **không** dùng font đó, vì tôi chưa
+xác nhận được nó có đủ dấu tiếng Việt (ă, ơ, ộ, ề…) hay không — thiếu là vỡ dấu
+cả trang. Thay vào đó dùng **Be Vietnam Pro** (font website đang có sẵn, đủ dấu
+tiếng Việt) ở nét rất đậm 800 — vuông vức, hợp phong cách, và chắc chắn hiển thị
+đúng tiếng Việt.
+
+Nếu thầy/cô muốn thử đúng font của Figma: thêm `Space+Grotesk:wght@400;500;700`
+vào thẻ `<link>` Google Fonts trong `public/index.html`, rồi sửa 1 dòng trong
+`style.css`:
+
+```css
+[data-skin="neo"] { --f-display: 'Space Grotesk', var(--f-body); }
+```
+
+Nhớ kiểm tra kỹ các chữ có dấu trước khi đưa lên cho học sinh dùng.
+
+## Trò phi thuyền
+
+Trò bắn thiên thạch giữ nguyên nền vũ trụ tối — viền đen trên nền đen thì không
+nhìn thấy gì. Chỉ có thanh HUD phía trên là theo giao diện mới.

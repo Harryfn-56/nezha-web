@@ -1343,3 +1343,297 @@ table.tbl th { background: linear-gradient(180deg, #FFF6E9, #FFF1DE); }
   .syl { flex: 1 1 78px; min-width: 78px; }
   .syl-hz { font-size: 1.45rem; }
 }
+
+/* ====================================================================
+ * BẢN 1.8 — GIAO DIỆN "NEO" CHO PHẦN TRÒ CHƠI
+ * Dựa trên bộ Neo Brutalism UI Library (Figma Community).
+ *
+ * Công thức của phong cách này, lặp lại ở mọi thành phần:
+ *      • viền 2px đen #1A1A1A
+ *      • bóng CỨNG 4px 4px 0 màu đen (không mờ, không chuyển sắc)
+ *      • bo góc 8px, màu phẳng rực rỡ, chữ đen đậm
+ *
+ * CHỈ áp cho trang của học sinh (trang chính, 11 trò chơi, vào phòng
+ * Kahoot, bảng số). Trang bài học và trang quản trị của thầy/cô vẫn giữ
+ * giao diện kem mềm cũ cho dễ đọc lâu.
+ *
+ * Bật/tắt ở đâu: mảng NEO_PATHS trong public/js/core.js. Để mảng rỗng
+ * là cả website quay về giao diện cũ.
+ * ================================================================== */
+
+[data-skin="neo"] {
+  /* --- bảng màu lấy đúng từ file Figma --- */
+  --neo-ink:    #1A1A1A;
+  --neo-bg:     #FDF2E9;
+  --neo-pink:   #FF6B6B;
+  --neo-purple: #A388EE;
+  --neo-teal:   #4ECDC4;
+  --neo-yellow: #FFE66D;
+  --neo-blue:   #45B7D1;
+  --neo-orange: #F7A072;
+  --neo-red:    #FF4757;
+
+  --neo-bd: 2px solid var(--neo-ink);
+  --neo-sh-sm: 3px 3px 0 var(--neo-ink);
+  --neo-sh:    4px 4px 0 var(--neo-ink);
+  --neo-sh-lg: 6px 6px 0 var(--neo-ink);
+
+  /* --- ghi đè các biến gốc để mọi thành phần tự đổi theo --- */
+  --ink: #1A1A1A; --ink-2: #4A4A4A; --ink-3: #6B6B6B;
+  --line: #1A1A1A; --line-2: #1A1A1A;
+  --cream: #FDF2E9; --cream-2: #FFF3E4;
+  --paper: #FFFFFF;
+
+  --r-sm: 6px; --r: 8px; --r-lg: 10px; --r-xl: 12px; --r-2xl: 14px;
+  --sh-1: var(--neo-sh-sm);
+  --sh-2: var(--neo-sh);
+  --sh-3: var(--neo-sh-lg);
+  --sh-border: 0 0 0 2px var(--neo-ink), var(--neo-sh);
+  --sh-red: var(--neo-sh);
+  --ring: 0 0 0 4px rgba(255, 230, 109, .9);
+
+  --ok: #0B6B34; --ok-bg: #DFF6E8;
+  --bad: #C0392B; --bad-bg: #FFE3E0;
+
+  /* Baloo 2 bo tròn mềm, không hợp phong cách này — dùng luôn font chữ
+   * chính (Be Vietnam Pro) ở nét rất đậm cho vuông vức, và quan trọng
+   * hơn: Be Vietnam Pro có đầy đủ dấu tiếng Việt. */
+  --f-display: var(--f-body);
+}
+
+body[data-skin="neo"] {
+  background: var(--neo-bg);
+  background-image: none;
+}
+
+[data-skin="neo"] h1, [data-skin="neo"] h2,
+[data-skin="neo"] h3, [data-skin="neo"] h4 {
+  font-weight: 800; letter-spacing: -.015em;
+}
+
+/* ------------------------------------------------------------ nút bấm */
+
+[data-skin="neo"] .btn {
+  --bg: var(--neo-pink); --bd: var(--neo-ink); --fg: var(--neo-ink);
+  border: var(--neo-bd); border-radius: 8px;
+  box-shadow: var(--neo-sh); font-weight: 800;
+}
+[data-skin="neo"] .btn:hover {
+  filter: none; transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 var(--neo-ink);
+}
+[data-skin="neo"] .btn:active {
+  transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--neo-ink);
+}
+[data-skin="neo"] .btn-green  { --bg: var(--neo-teal); }
+[data-skin="neo"] .btn-blue   { --bg: var(--neo-blue); }
+[data-skin="neo"] .btn-orange { --bg: var(--neo-orange); }
+[data-skin="neo"] .btn-gold   { --bg: var(--neo-yellow); }
+
+[data-skin="neo"] .btn-ghost {
+  background: #fff; --fg: var(--neo-ink);
+  border: var(--neo-bd); box-shadow: var(--neo-sh);
+}
+[data-skin="neo"] .btn-plain {
+  background: transparent; border: 2px solid transparent; box-shadow: none;
+}
+[data-skin="neo"] .btn-plain:hover {
+  background: #fff; border-color: var(--neo-ink); transform: none;
+  box-shadow: var(--neo-sh-sm);
+}
+[data-skin="neo"] .btn-sm { border-radius: 6px; box-shadow: var(--neo-sh-sm); }
+[data-skin="neo"] .btn-lg { border-radius: 10px; }
+[data-skin="neo"] .btn-pill { border-radius: 999px; box-shadow: var(--neo-sh); }
+[data-skin="neo"] .btn-pill .knob {
+  background: rgba(0, 0, 0, .12); box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .5);
+}
+
+/* ------------------------------------------------------- thẻ & khung */
+
+[data-skin="neo"] .card,
+[data-skin="neo"] .qbox,
+[data-skin="neo"] .stat,
+[data-skin="neo"] .tbl-wrap,
+[data-skin="neo"] .speak-card,
+[data-skin="neo"] .review-item {
+  border: var(--neo-bd); box-shadow: var(--neo-sh); background: #fff;
+}
+[data-skin="neo"] .qbox { border-radius: 12px; }
+[data-skin="neo"] .bezel { background: transparent; box-shadow: none; padding: 0; }
+[data-skin="neo"] .stat-in, [data-skin="neo"] .gc-in { box-shadow: none; }
+
+/* Thẻ trò chơi: mỗi trò một màu phẳng, viền đen, bóng cứng */
+[data-skin="neo"] .game-card {
+  border: var(--neo-bd); box-shadow: var(--neo-sh);
+  background: var(--accent-soft, #fff); border-radius: 10px;
+}
+[data-skin="neo"] .game-card:hover {
+  transform: translate(-2px, -2px); box-shadow: 7px 7px 0 var(--neo-ink);
+}
+[data-skin="neo"] .game-card:active {
+  transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--neo-ink);
+}
+[data-skin="neo"] .c-red     { --accent: #E23B3B; --accent-soft: #FF6B6B; }
+[data-skin="neo"] .c-orange  { --accent: #C86A2E; --accent-soft: #F7A072; }
+[data-skin="neo"] .c-amber   { --accent: #B08900; --accent-soft: #FFE66D; }
+[data-skin="neo"] .c-green   { --accent: #0E8C89; --accent-soft: #4ECDC4; }
+[data-skin="neo"] .c-blue    { --accent: #1E7FA0; --accent-soft: #45B7D1; }
+[data-skin="neo"] .c-purple  { --accent: #6B4FC4; --accent-soft: #A388EE; }
+[data-skin="neo"] .c-teal    { --accent: #0E8C89; --accent-soft: #7BE0D8; }
+[data-skin="neo"] .c-crimson { --accent: #C0182F; --accent-soft: #FF8FA3; }
+[data-skin="neo"] .game-card .ic {
+  background: #fff; border: var(--neo-bd); border-radius: 8px;
+  box-shadow: 2px 2px 0 var(--neo-ink);
+}
+[data-skin="neo"] .game-card h3,
+[data-skin="neo"] .game-card p { color: var(--neo-ink); }
+
+/* --------------------------------------------------- khối chào mừng */
+
+[data-skin="neo"] .hero,
+[data-skin="neo"] .result-hero {
+  background: var(--neo-yellow); background-image: none;
+  color: var(--neo-ink); border: var(--neo-bd);
+  border-radius: 12px; box-shadow: var(--neo-sh-lg);
+}
+[data-skin="neo"] .result-hero { background: var(--neo-pink); }
+[data-skin="neo"] .hero .muted,
+[data-skin="neo"] .result-hero div { color: var(--neo-ink); opacity: 1; }
+[data-skin="neo"] .eyebrow {
+  background: #fff; color: var(--neo-ink);
+  border: var(--neo-bd); box-shadow: 2px 2px 0 var(--neo-ink);
+}
+[data-skin="neo"] .big-score {
+  color: #fff; text-shadow: 3px 3px 0 var(--neo-ink);
+}
+[data-skin="neo"] .stars { color: var(--neo-ink); }
+
+/* --------------------------------------------- đáp án & ô nhập liệu */
+
+[data-skin="neo"] .opt {
+  border: var(--neo-bd); border-radius: 8px;
+  box-shadow: var(--neo-sh); background: #fff;
+}
+[data-skin="neo"] .opt:hover:not(.locked) {
+  border-color: var(--neo-ink); background: var(--neo-yellow);
+  transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--neo-ink);
+}
+[data-skin="neo"] .opt:active:not(.locked) {
+  transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--neo-ink);
+}
+[data-skin="neo"] .opt.ok  { background: var(--neo-teal); }
+[data-skin="neo"] .opt.bad { background: var(--neo-red); color: #fff; }
+
+[data-skin="neo"] .input, [data-skin="neo"] .num-cell {
+  border: var(--neo-bd); border-radius: 8px; box-shadow: var(--neo-sh-sm);
+}
+[data-skin="neo"] .input:focus {
+  outline: none; box-shadow: var(--neo-sh); border-color: var(--neo-ink);
+}
+[data-skin="neo"] .num-cell:hover {
+  background: var(--neo-yellow); transform: translate(-1px, -1px);
+  box-shadow: var(--neo-sh);
+}
+
+/* ------------------------------------------------- nhãn, thanh, HUD */
+
+[data-skin="neo"] .chip, [data-skin="neo"] .pill {
+  border: var(--neo-bd); box-shadow: 2px 2px 0 var(--neo-ink);
+  background: #fff; color: var(--neo-ink); border-radius: 999px;
+}
+[data-skin="neo"] .chip { background: var(--neo-yellow); }
+[data-skin="neo"] .chip-soft { background: #fff; }
+[data-skin="neo"] .chip-ok   { background: var(--neo-teal); color: var(--neo-ink); }
+[data-skin="neo"] .chip-bad  { background: var(--neo-red); color: #fff; }
+[data-skin="neo"] .chip-warn { background: var(--neo-orange); color: var(--neo-ink); }
+[data-skin="neo"] .pill-score  { color: var(--neo-ink); background: var(--neo-yellow); }
+[data-skin="neo"] .pill-streak {
+  background: var(--neo-orange); color: var(--neo-ink); border: var(--neo-bd);
+}
+
+[data-skin="neo"] .bar, [data-skin="neo"] .meter-track {
+  background: #fff; border: var(--neo-bd); border-radius: 999px;
+  box-shadow: none; height: 14px; overflow: hidden;
+}
+[data-skin="neo"] .bar > i, [data-skin="neo"] .meter-track > i {
+  background: var(--neo-pink); border-radius: 0;
+}
+[data-skin="neo"] .speak-meter > i { background: var(--neo-teal); }
+
+[data-skin="neo"] .g-top {
+  background: var(--neo-bg); backdrop-filter: none;
+  border-bottom: var(--neo-bd);
+}
+[data-skin="neo"] .nav {
+  background: var(--neo-bg); backdrop-filter: none;
+  border: var(--neo-bd); box-shadow: var(--neo-sh);
+}
+
+/* ------------------------------------------------ thẻ lật & bảng, lời nhắc */
+
+[data-skin="neo"] .fc-face {
+  border: var(--neo-bd); border-radius: 12px; box-shadow: var(--neo-sh-lg);
+}
+[data-skin="neo"] .fc-front { background: var(--neo-yellow); }
+[data-skin="neo"] .fc-back  { background: var(--neo-teal); }
+
+[data-skin="neo"] .alert {
+  border: var(--neo-bd); border-radius: 8px; box-shadow: var(--neo-sh-sm);
+  background: var(--neo-orange); color: var(--neo-ink);
+}
+[data-skin="neo"] .alert-ok   { background: var(--neo-teal); color: var(--neo-ink); }
+[data-skin="neo"] .alert-info { background: var(--neo-blue); color: var(--neo-ink); }
+
+[data-skin="neo"] .seg {
+  background: #fff; border: var(--neo-bd); border-radius: 10px;
+  box-shadow: var(--neo-sh-sm);
+}
+[data-skin="neo"] .seg button.on {
+  background: var(--neo-yellow); border: var(--neo-bd); color: var(--neo-ink);
+}
+
+[data-skin="neo"] .syl { border-width: 2px; box-shadow: 2px 2px 0 var(--neo-ink); }
+[data-skin="neo"] .tone-chip, [data-skin="neo"] .tip {
+  border: var(--neo-bd); border-radius: 8px; background: #fff;
+}
+[data-skin="neo"] .toast {
+  border: var(--neo-bd); border-radius: 8px; box-shadow: var(--neo-sh);
+  background: var(--neo-yellow); color: var(--neo-ink);
+}
+[data-skin="neo"] .ln { background: var(--neo-ink); height: 2px; }
+[data-skin="neo"] .py { color: #B8461F; font-style: normal; font-weight: 700; }
+
+/* Bỏ hiệu ứng hiện dần: phong cách này chuộng sự dứt khoát */
+[data-skin="neo"] [data-reveal] { opacity: 1; transform: none; filter: none; }
+
+/* --- Sửa vài chi tiết nhỏ của giao diện neo --- */
+
+/* Thẻ trò chơi: để màu của thẻ ăn ra cả mặt thẻ, không bị lõi trắng che */
+[data-skin="neo"] .gc-in { background: transparent; }
+
+/* Khối chào mừng nền vàng → chữ phải đen mới đọc được */
+[data-skin="neo"] .hero h1,
+[data-skin="neo"] .hero p,
+[data-skin="neo"] .hero .muted,
+[data-skin="neo"] .hero span,
+[data-skin="neo"] .result-hero h1 { color: var(--neo-ink); }
+
+/* Chữ cái A · B · C · D trước mỗi đáp án */
+[data-skin="neo"] .opt .key {
+  border: var(--neo-bd); background: var(--neo-yellow);
+  color: var(--neo-ink); border-radius: 6px; font-weight: 800;
+}
+[data-skin="neo"] .opt.ok .key  { background: #fff; }
+[data-skin="neo"] .opt.bad .key { background: #fff; color: var(--neo-ink); }
+
+/* Nút trơn (bật/tắt âm thanh…) không có viền thì cũng đừng có bóng */
+[data-skin="neo"] .btn-plain,
+[data-skin="neo"] .btn-plain.btn-sm { box-shadow: none; }
+[data-skin="neo"] .btn-plain:hover { box-shadow: var(--neo-sh-sm); }
+
+/* Trên thẻ trò chơi nền màu, chữ phụ phải đậm lại mới đọc rõ */
+[data-skin="neo"] .game-card .cn,
+[data-skin="neo"] .game-card .muted,
+[data-skin="neo"] .game-card .tiny { color: var(--neo-ink); opacity: .72; }
+[data-skin="neo"] .game-card .gc-in p,
+[data-skin="neo"] .game-card > p { color: var(--neo-ink); opacity: .8; }
