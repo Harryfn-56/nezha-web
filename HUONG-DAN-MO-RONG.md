@@ -922,3 +922,34 @@ Nhớ kiểm tra kỹ các chữ có dấu trước khi đưa lên cho học sin
 
 Trò bắn thiên thạch giữ nguyên nền vũ trụ tối — viền đen trên nền đen thì không
 nhìn thấy gì. Chỉ có thanh HUD phía trên là theo giao diện mới.
+
+## Lấp hai bên lề trên màn hình rộng (bản 1.8b)
+
+Màn 1920px thì hai bên nội dung trống hơn 400px mỗi bên. Đã xử lý 3 lớp:
+
+**1. Nới khung nội dung.** Từ 1280px trở lên, khung rộng 1360px thay vì 1120px
+→ thẻ trò chơi thành **5 thẻ/hàng**, ô thống kê 5 ô/hàng, thanh điều hướng cũng
+rộng theo cho khỏi lệch. Riêng 1280–1500px vẫn để 4 thẻ/hàng cho thẻ khỏi bị bóp.
+Màn 1440px sau khi nới thì gần như hết trống.
+
+**2. Nền lưới chấm.** Hoa văn phẳng quen thuộc của neo-brutalism, chấm đen mờ
+11% cách nhau 26px, phủ toàn trang kể cả hai bên lề.
+
+**3. Sticker hai bên** (chỉ hiện từ 1700px trở lên — hẹp hơn thì không đủ chỗ):
+
+| Bên trái | Bên phải |
+|---|---|
+| 你好 (vàng) · ★ (xanh ngọc) · 加油 (hồng) | 学 (tím) · logo NeZha (trắng) · 谢谢 (xanh dương) |
+
+Kèm mấy hình tròn/vuông rỗng ruột viền mờ để lấp phần lề còn lại. Tất cả nằm
+**sau** nội dung và không bắt chuột, nên không bao giờ che nút bấm.
+
+**Sửa ở đâu:**
+
+- Đổi chữ trên sticker: mảng `STICKERS` trong `public/js/views/layout.js`
+- Đổi vị trí/màu sticker: mục `.st-1` … `.st-6` cuối `public/css/style.css`
+- Bỏ hẳn trang trí: xoá `neo ? deco() : null` trong hàm `page()` của `layout.js`
+- Đổi độ rộng khung: sửa `1360px` trong khối `@media (min-width: 1280px)`
+
+**Ghi chú:** chữ ghi dưới sticker để tiếng Việt chứ không để pinyin, vì dấu
+thanh pinyin (ǎ, ǐ, ǚ) không phải font nào cũng có — thiếu là hiện sai chữ.

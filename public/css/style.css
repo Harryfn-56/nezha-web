@@ -1401,9 +1401,14 @@ table.tbl th { background: linear-gradient(180deg, #FFF6E9, #FFF1DE); }
   --f-display: var(--f-body);
 }
 
+/* Nền lưới chấm — hoa văn phẳng quen thuộc của phong cách neo-brutalism.
+ * Độ tương phản để rất thấp để không tranh chú ý với thẻ trò chơi. */
 body[data-skin="neo"] {
-  background: var(--neo-bg);
-  background-image: none;
+  background-color: var(--neo-bg);
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(26, 26, 26, .11) 1.5px, transparent 1.6px);
+  background-size: 26px 26px;
+  background-attachment: fixed;
 }
 
 [data-skin="neo"] h1, [data-skin="neo"] h2,
@@ -1637,3 +1642,78 @@ body[data-skin="neo"] {
 [data-skin="neo"] .game-card .tiny { color: var(--neo-ink); opacity: .72; }
 [data-skin="neo"] .game-card .gc-in p,
 [data-skin="neo"] .game-card > p { color: var(--neo-ink); opacity: .8; }
+
+/* ====================================================================
+ * BẢN 1.8b — LẤP HAI BÊN LỀ CHO MÀN HÌNH RỘNG
+ * Khung nội dung rộng ra + sticker chữ Hán và hình khối ở hai bên.
+ * ================================================================== */
+
+/* --- Màn rộng: nới khung, 5 thẻ trò chơi một hàng --- */
+@media (min-width: 1280px) {
+  [data-skin="neo"] .wrap { width: min(1360px, 100% - 40px); }
+  /* Thanh điều hướng cũng phải rộng bằng nội dung, nếu không nhìn lệch */
+  [data-skin="neo"] .nav  { width: min(1360px, 100% - 40px); }
+  [data-skin="neo"] .game-grid { grid-template-columns: repeat(5, 1fr); }
+  [data-skin="neo"] .stat-row { grid-template-columns: repeat(5, 1fr); }
+}
+@media (min-width: 1280px) and (max-width: 1500px) {
+  [data-skin="neo"] .game-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* --- Lớp trang trí hai bên --- */
+.neo-deco {
+  position: fixed; inset: 0; z-index: -1;
+  pointer-events: none; overflow: hidden;
+  /* Mốc để đặt sticker: mép ngoài của khung nội dung 1360px */
+  --edge: calc(50% + 700px);
+}
+.neo-deco > * { position: absolute; }
+
+/* Sticker chữ Hán: viền đen dày, bóng cứng, xoay nhẹ như miếng dán thật */
+.nz-st {
+  display: grid; place-items: center; gap: 1px;
+  width: 116px; padding: 12px 10px;
+  border: 3px solid #1A1A1A; border-radius: 16px;
+  box-shadow: 6px 6px 0 #1A1A1A;
+  text-align: center; line-height: 1.05;
+  animation: nzFloat 7s ease-in-out infinite alternate;
+}
+.nz-st b {
+  font-family: var(--f-cn); font-size: 1.95rem; font-weight: 700;
+  color: #1A1A1A; display: block;
+}
+.nz-st i {
+  font-style: normal; font-size: .72rem; font-weight: 800;
+  color: #1A1A1A; opacity: .6; letter-spacing: .02em;
+}
+.nz-st img { display: block; }
+
+.st-1 { right: var(--edge); top: 118px;  background: #FFE66D; transform: rotate(-7deg);  animation-delay: -.4s; }
+.st-2 { right: var(--edge); top: 402px;  background: #4ECDC4; transform: rotate(9deg);   animation-delay: -2.1s; }
+.st-3 { right: var(--edge); top: 690px;  background: #FF6B6B; transform: rotate(5deg);   animation-delay: -3.6s; }
+.st-4 { left:  var(--edge); top: 150px;  background: #A388EE; transform: rotate(8deg);   animation-delay: -1.2s; }
+.st-5 { left:  var(--edge); top: 434px;  background: #FFFFFF; transform: rotate(-6deg);  animation-delay: -2.8s; }
+.st-6 { left:  var(--edge); top: 722px;  background: #45B7D1; transform: rotate(-9deg);  animation-delay: -4.4s; }
+
+/* Hình khối rỗng ruột — lấp phần lề còn lại, chấp nhận bị cắt bớt ở mép */
+.nz-ring, .nz-sq { border: 4px solid rgba(26, 26, 26, .16); }
+.nz-ring { border-radius: 50%; }
+.nz-sq   { border-radius: 14px; }
+.ring-1 { width: 200px; height: 200px; left: -70px;  top: 300px; }
+.ring-2 { width: 128px; height: 128px; right: -40px; top: 760px; }
+.sq-1   { width: 108px; height: 108px; left: 34px;   top: 700px; transform: rotate(14deg); }
+.sq-2   { width: 152px; height: 152px; right: 26px;  top: 210px; transform: rotate(-10deg); }
+
+@keyframes nzFloat {
+  from { translate: 0 0; }
+  to   { translate: 0 -9px; }
+}
+
+/* Màn chưa đủ rộng thì ẩn bớt cho khỏi chèn vào nội dung */
+@media (max-width: 1700px) { .neo-deco .nz-st { display: none; } }
+@media (max-width: 1440px) { .neo-deco { display: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .nz-st { animation: none; }
+}
+@media print { .neo-deco { display: none; } }

@@ -60,9 +60,50 @@ export function footer() {
   ]);
 }
 
+/**
+ * TRANG TRÍ HAI BÊN LỀ (chỉ giao diện "neo", chỉ màn hình rộng)
+ * ------------------------------------------------------------------
+ * Màn hình rộng 1920px thì hai bên nội dung còn trống mấy trăm pixel.
+ * Lớp này dán vào đó vài miếng sticker chữ Hán và mấy hình khối viền đen
+ * cho đỡ trống, đúng tinh thần neo-brutalism.
+ *
+ * Lưu ý khi sửa:
+ *   • Toàn bộ nằm sau nội dung (z-index -1) và không bắt chuột
+ *     (pointer-events: none) nên không bao giờ che nút bấm.
+ *   • Máy màn hẹp tự ẩn hết — xem phần CSS ".neo-deco" ở cuối style.css.
+ *   • Muốn đổi chữ trên sticker thì sửa ngay mảng STICKERS bên dưới.
+ */
+const STICKERS = [
+  // Ghi chú tiếng Việt chứ không ghi pinyin: dấu thanh pinyin (ǎ, ǐ, ǚ)
+  // không phải font nào cũng có, thiếu là hiện sai chữ.
+  { cls: 'st-1', hz: '你好', py: 'xin chào' },
+  { cls: 'st-2', hz: '★',   py: 'giỏi lắm' },
+  { cls: 'st-3', hz: '加油', py: 'cố lên' },
+  { cls: 'st-4', hz: '学',   py: 'học' },
+  { cls: 'st-5', logo: true, py: 'NeZha' },
+  { cls: 'st-6', hz: '谢谢', py: 'cảm ơn' },
+];
+
+export function deco() {
+  return el('div.neo-deco', { 'aria-hidden': 'true' }, [
+    el('div.nz-ring.ring-1'),
+    el('div.nz-ring.ring-2'),
+    el('div.nz-sq.sq-1'),
+    el('div.nz-sq.sq-2'),
+    ...STICKERS.map((s) => el('div.nz-st.' + s.cls, {}, [
+      s.logo
+        ? el('img', { src: '/assets/logo.png', alt: '', width: 46, height: 46 })
+        : el('b', {}, s.hz),
+      el('i', {}, s.py),
+    ])),
+  ]);
+}
+
 /** Khung 1 trang thường (có nav + footer) */
 export function page(...content) {
+  const neo = document.body.dataset.skin === 'neo';
   const node = el('div.screen', {}, [
+    neo ? deco() : null,
     nav(),
     el('main.grow', { style: { paddingTop: '26px', paddingBottom: '10px' } }, content),
     footer(),
