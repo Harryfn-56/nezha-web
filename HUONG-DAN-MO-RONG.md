@@ -953,3 +953,45 @@ Kèm mấy hình tròn/vuông rỗng ruột viền mờ để lấp phần lề 
 
 **Ghi chú:** chữ ghi dưới sticker để tiếng Việt chứ không để pinyin, vì dấu
 thanh pinyin (ǎ, ǐ, ǚ) không phải font nào cũng có — thiếu là hiện sai chữ.
+
+---
+
+# M. Bản 1.9 — Phi thuyền bắn thiên thạch chậm lại gấp 3
+
+Học sinh phản ánh thiên thạch rơi nhanh quá, chưa kịp gõ pinyin đã chạm đất.
+
+**Đã đổi:** thời gian rơi ban đầu **9 giây → 27 giây** (gấp 3), và mốc nhanh
+nhất cũng nhân 3 (**3 giây → 9 giây**) để độ khó vẫn tăng đều đúng như cũ, chỉ
+là chậm hơn 3 lần ở mọi cấp.
+
+| Cấp | Thời gian rơi | Số viên cùng lúc |
+|---|---|---|
+| 1 | 27,0s | 2 |
+| 2 | 23,2s | 2 |
+| 3 | 20,0s | 3 |
+| 4 | 17,2s | 3 |
+| 5 | 14,8s | 4 |
+| 6 | 12,7s | 4 |
+| 7 | 10,9s | 5 |
+| 8 | 9,4s | 5 |
+| 9 trở đi | 9,0s | 5 |
+
+Cứ bắn trúng 6 viên thì lên 1 cấp, nên phải bắn trúng 48 viên mới tới cấp khó nhất.
+
+**Một chỗ phải sửa kèm.** Trước đây khoảng cách giữa 2 lần thả thiên thạch được
+tính theo thời gian rơi. Nếu để nguyên thì rơi chậm gấp 3 kéo theo **thả viên
+mới cũng chậm gấp 3** — cấp 1 phải hơn 11 giây mới có viên mới, màn hình trống
+trơn, trò chơi thành ì ạch. Nay có thêm trần `shipSpawnMaxSeconds` (mặc định
+4,5 giây): mỗi viên vẫn có nhiều thời gian, nhưng màn hình luôn đủ viên để bắn.
+
+**Muốn chỉnh thêm** — trong `public/js/config.js`:
+
+```js
+shipStartSeconds: 27,       // chậm hơn nữa thì tăng số này
+shipMinSeconds: 9,          // ... và tăng số này cùng tỉ lệ
+shipLevelEvery: 6,          // muốn khó nhanh hơn thì giảm (vd 4)
+shipSpawnMaxSeconds: 4.5,   // lâu nhất bao nhiêu giây thì thả viên mới
+```
+
+Giữ `shipStartSeconds` gấp 3 lần `shipMinSeconds` thì đường tăng độ khó vẫn
+đúng như bảng trên.

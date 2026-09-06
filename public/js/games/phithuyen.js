@@ -61,7 +61,16 @@ export function play(game, lesson, container) {
     Math.round((g.shipStartSeconds || 9) * 1000 * Math.pow(g.shipSpeedUp || 0.86, level - 1))
   );
   const maxOnScreen = () => Math.min(g.shipMaxMeteors || 5, 1 + Math.floor((level - 1) / 2) + 1);
-  const spawnGap = () => Math.max(900, fallMs() / (maxOnScreen() + 0.4));
+
+  /* Khoảng cách giữa 2 lần thả thiên thạch.
+   * Tính theo thời gian rơi, NHƯNG có trần: nếu không chặn thì lúc thiên
+   * thạch rơi chậm (cấp 1 rơi 27 giây) sẽ thành ra mãi mới có viên mới,
+   * màn hình trống trơn và trò chơi bị ì. Có trần thì màn hình luôn đủ
+   * viên để bắn, mỗi viên vẫn có nhiều thời gian. */
+  const spawnGap = () => Math.min(
+    (g.shipSpawnMaxSeconds || 4.5) * 1000,
+    Math.max(900, fallMs() / (maxOnScreen() + 0.4))
+  );
 
   /* ------------------------------------------------------- giao diện */
   const arena = el('div.space-arena');

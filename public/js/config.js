@@ -116,14 +116,23 @@ export const CONFIG = {
     /* --- Phi thuyền bắn thiên thạch --------------------------------
      * Giống Na Tra đại chiến: cứ shipLevelEvery viên bắn trúng thì lên
      * 1 cấp — rơi nhanh hơn và nhiều viên cùng lúc hơn.
-     *   Cấp 1: 9.0s/viên, tối đa 2 viên · Cấp 3: 6.7s, 3 viên
-     *   Cấp 5: 5.0s, 4 viên · Cấp 7 trở đi: nhanh nhất 3.0s, 5 viên   */
+     *
+     * Thời gian rơi từng cấp với thông số mặc định:
+     *   Cấp 1: 27.0s, tối đa 2 viên     Cấp 5: 14.8s, 4 viên
+     *   Cấp 2: 23.2s, 2 viên            Cấp 6: 12.7s, 4 viên
+     *   Cấp 3: 20.0s, 3 viên            Cấp 7: 10.9s, 5 viên
+     *   Cấp 4: 17.2s, 3 viên            Cấp 9 trở đi: 9.0s, 5 viên
+     *
+     * Muốn CHẬM HƠN NỮA: tăng shipStartSeconds và shipMinSeconds cùng
+     * lúc (giữ tỉ lệ 3:1 thì độ khó vẫn tăng đều như trên).
+     * Muốn KHÓ NHANH HƠN: giảm shipLevelEvery (vd 4 câu lên 1 cấp).   */
     shipLives: 3,               // số mạng
-    shipStartSeconds: 9,        // thời gian rơi ở cấp 1 (giây)
+    shipStartSeconds: 27,       // thời gian rơi ở cấp 1 (giây)
     shipLevelEvery: 6,          // bắn trúng mấy viên thì lên cấp
     shipSpeedUp: 0.86,          // mỗi cấp còn 86% thời gian của cấp trước
-    shipMinSeconds: 3,          // nhanh nhất (giây)
+    shipMinSeconds: 9,          // nhanh nhất (giây)
     shipMaxMeteors: 5,          // nhiều nhất bao nhiêu viên cùng lúc
+    shipSpawnMaxSeconds: 4.5,   // lâu nhất bao nhiêu giây thì thả viên mới
   },
 };
 

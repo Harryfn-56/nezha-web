@@ -273,7 +273,8 @@ with sync_playwright() as p:
         return "".join(c for c in t.lower() if c.isalnum())
 
     shot_ok = 0
-    for _ in range(14):
+    # Từ bản 1.9 thiên thạch rơi chậm hơn (cấp 1 là 27 giây) nên chờ lâu hơn
+    for _ in range(30):
         met = page.query_selector_all(".meteor")
         if not met:
             time.sleep(0.6)
