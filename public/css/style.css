@@ -1717,3 +1717,87 @@ body[data-skin="neo"] {
   .nz-st { animation: none; }
 }
 @media print { .neo-deco { display: none; } }
+
+/* ====================================================================
+ * BẢN 2.0 — THANH MỜI CÀI APP TRÊN ĐIỆN THOẠI
+ * ================================================================== */
+
+.pwa-bar {
+  position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+  z-index: 180; width: min(560px, calc(100% - 24px));
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  background: #fff; color: var(--ink);
+  border: 2px solid #1A1A1A; border-radius: 16px;
+  box-shadow: 5px 5px 0 #1A1A1A;
+  animation: pwaUp .35s cubic-bezier(.34, 1.4, .64, 1);
+}
+.pwa-bar .pwa-ic {
+  flex: none; border-radius: 10px; border: 2px solid #1A1A1A;
+}
+.pwa-bar .small { color: var(--ink-2); line-height: 1.35; }
+.pwa-update { background: #FFE66D; }
+
+@keyframes pwaUp {
+  from { opacity: 0; transform: translate(-50%, 16px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* Hướng dẫn cài trên iPhone */
+.pwa-guide {
+  position: fixed; inset: 0; z-index: 190;
+  background: rgba(26, 26, 26, .55);
+  display: grid; place-items: center; padding: 20px;
+}
+.pwa-card {
+  background: #fff; border: 3px solid #1A1A1A; border-radius: 20px;
+  box-shadow: 8px 8px 0 #1A1A1A;
+  padding: 24px 22px; width: min(400px, 100%); text-align: center;
+}
+.pwa-card img { border-radius: 14px; border: 2px solid #1A1A1A; margin-bottom: 10px; }
+.pwa-card h3 { margin: 0 0 12px; }
+.pwa-card ol { text-align: left; margin: 0 0 12px; padding-left: 22px; line-height: 1.75; }
+.pwa-card .btn { margin-top: 6px; }
+
+@media (max-width: 520px) {
+  .pwa-bar { flex-wrap: wrap; }
+  .pwa-bar .grow { flex: 1 1 100%; order: -1; }
+}
+
+/* Chừa chỗ cho tai thỏ / thanh vuốt của điện thoại khi chạy dạng app */
+@media (display-mode: standalone) {
+  body { padding-bottom: env(safe-area-inset-bottom); }
+  .pwa-bar { bottom: calc(16px + env(safe-area-inset-bottom)); }
+}
+
+/* ====================================================================
+ * SỬA LỖI TRÀN NGANG TRÊN ĐIỆN THOẠI
+ * Thanh điều hướng có 2 nút + ô tên học sinh + nút thoát, cộng lại rộng
+ * hơn màn hình điện thoại (439px trên máy màn 390px) nên cả trang bị đẩy
+ * lệch, vuốt ngang được. Thu gọn dần theo bề ngang màn hình.
+ * ================================================================== */
+
+/* Không bao giờ cho trang vuốt ngang được */
+html, body { max-width: 100%; overflow-x: hidden; }
+
+@media (max-width: 560px) {
+  /* Cho phép xuống dòng: chật quá thì nhóm nút bên phải tự tụt xuống
+     hàng dưới, KHÔNG được để tràn ra ngoài mép màn hình */
+  .nav-in { flex-wrap: wrap; gap: 8px; }
+  .nav-in > .row { gap: 6px; margin-left: auto; min-width: 0; flex-wrap: wrap;
+                   justify-content: flex-end; }
+  .brand span { display: none; }          /* bỏ dòng "Chinese Center" */
+  .who { padding: 4px 10px 4px 4px; gap: 7px; min-width: 0; }
+  .who .nm, .who .cl {
+    max-width: 78px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .nav .btn-sm { padding: 8px 11px; }
+}
+
+/* Màn thật hẹp: ô tên chỉ còn chữ cái viết tắt */
+@media (max-width: 430px) {
+  /* Chỉ giữ chữ cái viết tắt của tên, bỏ phần chữ cho gọn */
+  .who > div + div { display: none; }
+  .who { padding: 4px; }
+  .brand img { width: 34px; height: 34px; }
+}

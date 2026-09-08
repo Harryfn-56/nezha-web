@@ -1,14 +1,42 @@
 {
+  "id": "/",
   "name": "NeZha Chinese Center — Game ôn tập",
   "short_name": "NeZha Game",
-  "description": "Trò chơi ôn tập tiếng Trung cho học sinh NeZha Chinese Center",
+  "description": "Trò chơi ôn tập tiếng Trung cho học sinh NeZha Chinese Center: thẻ lật, trắc nghiệm, luyện phát âm, phi thuyền bắn thiên thạch và phòng thi Kahoot.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#FFF8EE",
-  "theme_color": "#A81F16",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#FDF2E9",
+  "theme_color": "#FDF2E9",
   "lang": "vi",
+  "dir": "ltr",
+  "categories": ["education", "games"],
   "icons": [
-    { "src": "/assets/icon-180.png", "sizes": "180x180", "type": "image/png" },
-    { "src": "/assets/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/assets/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Vào phòng Kahoot",
+      "short_name": "Vào phòng",
+      "url": "/vao-phong",
+      "icons": [{ "src": "/assets/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Chọn trò chơi",
+      "short_name": "Trò chơi",
+      "url": "/hoc",
+      "icons": [{ "src": "/assets/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Bảng số 1–99",
+      "short_name": "Bảng số",
+      "url": "/bang-so",
+      "icons": [{ "src": "/assets/icon-192.png", "sizes": "192x192" }]
+    }
   ]
 }

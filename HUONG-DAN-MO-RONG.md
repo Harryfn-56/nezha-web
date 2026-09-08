@@ -995,3 +995,89 @@ shipSpawnMaxSeconds: 4.5,   // lâu nhất bao nhiêu giây thì thả viên m�
 
 Giữ `shipStartSeconds` gấp 3 lần `shipMinSeconds` thì đường tăng độ khó vẫn
 đúng như bảng trên.
+
+---
+
+# N. Bản 2.0 — App trên điện thoại
+
+Website nay **cài được vào điện thoại như một cái app thật**: có icon NeZha
+ngoài màn hình chính, mở ra toàn màn hình (không thấy thanh địa chỉ trình
+duyệt), và **chơi được cả khi mất mạng**.
+
+Không phải lên App Store hay Google Play, không mất phí, không phải cài thêm
+phần mềm gì. Kỹ thuật này gọi là **PWA**; chỉ cần website chạy trên https —
+Cloudflare đã có sẵn.
+
+## Học sinh cài thế nào
+
+**Android (Chrome):** mở website → sau vài giây hiện thanh **"📲 Cài NeZha
+Game vào máy"** → bấm **Cài đặt** → xong. (Hoặc menu ⋮ → *Cài ứng dụng*.)
+
+**iPhone (bắt buộc dùng Safari):** mở website → bấm **Cài đặt** trên thanh mời
+→ website hiện hướng dẫn 3 bước: nút **Chia sẻ ⬆️** → **Thêm vào MH chính ➕**
+→ **Thêm**. Chrome trên iPhone không cài được, phải là Safari.
+
+Bấm **"Để sau"** thì thanh mời không hiện lại nữa (nhớ trong máy học sinh).
+
+## Icon app
+
+Icon **không** dùng nguyên logo, vì logo có dòng chữ "NeZha CHINESE CENTER" —
+thu về 48px trên màn hình điện thoại thì dòng chữ đó thành một vệt mờ. Icon chỉ
+lấy **phần nhân vật + ngọn lửa**, phóng to trên nền kem.
+
+| File | Dùng cho |
+|---|---|
+| `icon-192.png`, `icon-512.png` | Android, cửa sổ cài app |
+| `maskable-192.png`, `maskable-512.png` | Android cắt icon thành hình tròn — nhân vật thu nhỏ 60% để không bị cắt mất đầu |
+| `icon-180.png` | iPhone / iPad |
+| `favicon.png` | tab trình duyệt |
+
+Đổi logo thì chạy lại: `python3 scripts/make-icons.py` (cần `pip install pillow`).
+
+## Chơi được khi mất mạng
+
+File `public/sw.js` tải sẵn **42 file** (toàn bộ giao diện, 11 trò chơi, bài
+học, icon) về máy học sinh. Mất mạng vẫn mở app, vẫn chơi đủ 11 trò, điểm lưu
+tạm trong máy.
+
+**Ba nguyên tắc trong sw.js — đừng sửa nếu chưa hiểu rõ:**
+
+1. **Trang HTML luôn lấy từ mạng trước.** Nếu lấy từ bộ đệm trước, máy học sinh
+   sẽ kẹt mãi ở bản cũ sau khi thầy/cô cập nhật — đúng lỗi đã gặp hồi trước.
+2. **File js/css/ảnh lấy từ bộ đệm trước** cho nhanh. An toàn vì mỗi bản build
+   đều gắn `?v=<mã bản>` khác nhau vào tên file.
+3. **Lệnh gọi Supabase không bao giờ được lưu đệm.** Phòng Kahoot phải là dữ
+   liệu thật ngay lúc đó.
+
+Có bản mới thì app hiện thanh vàng **"🎉 Đã có bản mới — Cập nhật"**, học sinh
+bấm mới tải lại, **không tự tải lại giữa lúc đang chơi**.
+
+> Chạy `npm run dev` thì service worker **không** bật (nhận biết qua thẻ
+> `<meta name="nz-build">` còn nguyên placeholder). Nếu bật, mọi sửa đổi trong
+> file js sẽ bị bộ đệm che mất, sửa mãi không thấy đổi gì.
+
+## Lối tắt
+
+Giữ lâu vào icon app hiện 3 lối tắt: **Vào phòng Kahoot** · **Chọn trò chơi** ·
+**Bảng số 1–99**. Sửa trong `public/manifest.webmanifest`, mục `shortcuts`.
+
+## Tiện thể sửa một lỗi cũ trên điện thoại
+
+Thanh điều hướng có 2 nút + ô tên + nút thoát, cộng lại rộng 439px trong khi màn
+hình điện thoại chỉ 390px → cả trang bị đẩy lệch, vuốt ngang được. Nay thu gọn
+dần: dưới 560px bỏ dòng "Chinese Center" và cho nhóm nút xuống dòng nếu chật,
+dưới 430px ô tên chỉ còn chữ cái viết tắt. Đã khoá `overflow-x` để trang không
+bao giờ vuốt ngang được nữa.
+
+## Kiểm thử
+
+`python3 scripts/test-pwa.py` — phải chạy trên **bản đã build**:
+
+```
+npm run build
+node scripts/dev-server.js dist 4173
+python3 scripts/test-pwa.py
+```
+
+Kiểm tra manifest, icon, service worker, số file tải sẵn, và **ngắt mạng thật**
+rồi thử mở app + chơi thử một trò.

@@ -12,7 +12,9 @@ def snap(page, name, full=False):
 
 
 # Danh sách học sinh mẫu dùng cho các tab phụ (context riêng = localStorage riêng)
-OFFLINE = "window.localStorage.setItem('nz_offline', '1');"
+# nz_pwa_hide: tắt thanh mời cài app cho khỏi che nút trong lúc kiểm thử
+OFFLINE = ("window.localStorage.setItem('nz_offline', '1');"
+           "window.localStorage.setItem('nz_pwa_hide', '1');")
 
 ROSTER = """
 window.localStorage.setItem('nz_students', JSON.stringify([

@@ -170,6 +170,29 @@ fs.writeFileSync(indexPath, html);
 // Nội dung index.html cần cho ESM cache busting của các module con
 fs.writeFileSync(path.join(OUT, 'version.txt'), version + '\n');
 
+/* ------------------------------------------------- bản app điện thoại
+ * sw.js là phần chạy ngầm giúp app mở được khi mất mạng. Ở đây điền 2 thứ
+ * vào file đó:
+ *   __BUILD_VERSION__ → mã bản build, để mỗi lần cập nhật website là trình
+ *     duyệt tự nhận ra service worker mới và xoá bộ đệm cũ
+ *   __PRECACHE__ → danh sách file cần tải sẵn về máy ngay khi cài app
+ */
+const swPath = path.join(OUT, 'sw.js');
+if (fs.existsSync(swPath)) {
+  const precache = ['/', '/index.html', '/manifest.webmanifest'];
+  for (const rel of walk(OUT)) {
+    const p = '/' + rel.split(path.sep).join('/');
+    if (p === '/sw.js' || p === '/404.html' || p === '/version.txt') continue;
+    if (p.endsWith('.htaccess') || p.endsWith('/_redirects')) continue;
+    if (/\.(js|css|png|jpg|jpeg|svg|webp|woff2|webmanifest)$/i.test(p)) precache.push(p);
+  }
+  const swCode = fs.readFileSync(swPath, 'utf8')
+    .replace('__BUILD_VERSION__', version)
+    .replace('"__PRECACHE__"', JSON.stringify(precache));
+  fs.writeFileSync(swPath, swCode);
+  log(`  📱 Bản app: sw.js tải sẵn ${precache.length} file để chơi được khi mất mạng`);
+}
+
 /* -------------------------------------------------- .htaccess Hostinger */
 
 const htaccess = `# NeZha Chinese Center — cấu hình cho Hostinger (Apache/LiteSpeed)

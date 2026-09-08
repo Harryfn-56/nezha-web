@@ -6,6 +6,7 @@ import { route, setNotFound, render, go, mount, el, toast, BUILD_Q } from './cor
 import { getGame } from './data.js';
 import { currentUser, getLessonById } from './store.js';
 import { page } from './views/layout.js';
+import * as pwa from './pwa.js';
 import * as login from './views/login.js';
 import * as home from './views/home.js';
 import * as admin from './views/admin.js';
@@ -76,6 +77,10 @@ setNotFound(() => {
 /* --------------------------------------------------- khởi động */
 
 render();
+
+// Bản app cho điện thoại: bật phần chạy ngầm và lời mời cài app
+pwa.start();
+pwa.initInstall();
 
 // Ẩn màn hình chờ ban đầu
 const boot = document.getElementById('boot');

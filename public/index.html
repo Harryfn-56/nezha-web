@@ -5,11 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>NeZha Chinese Center — Game ôn tập tiếng Trung</title>
   <meta name="description" content="Website trò chơi ôn tập tiếng Trung dành cho học sinh NeZha Chinese Center: flashcard, trắc nghiệm, ghép cặp, gõ pinyin, nghe hiểu và thi đấu Kahoot đầu giờ." />
-  <meta name="theme-color" content="#A81F16" />
+  <meta name="theme-color" content="#FDF2E9" />
+  <!-- Mã bản build. Chạy `npm run dev` thì chỗ này còn nguyên dấu gạch dưới,
+       nhờ vậy biết mà KHÔNG bật service worker lúc đang sửa code. -->
+  <meta name="nz-build" content="__BUILD_VERSION__" />
 
   <link rel="icon" href="/assets/favicon.png" />
-  <link rel="apple-touch-icon" href="/assets/icon-180.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
+
+  <!-- Bản app trên điện thoại ------------------------------------------
+       Học sinh bấm "Thêm vào màn hình chính" là có icon NeZha ngoài màn
+       hình, mở ra toàn màn hình như app thật. iPhone không đọc manifest
+       nên phải khai báo riêng mấy dòng dưới đây. -->
+  <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="NeZha Game" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="application-name" content="NeZha Game" />
 
   <meta property="og:title" content="NeZha Chinese Center — Game ôn tập tiếng Trung" />
   <meta property="og:description" content="Chơi mà nhớ — ôn tập từ vựng tiếng Trung sau mỗi buổi học." />
